@@ -305,64 +305,70 @@ let GetRatingFilterIcon = (str) => {
     return dic[str] ? dic[str] : <p className='ratingFilterIcon'>{str}</p>;
 }
 
-function RatingsFilterOption({filterName, subFilterElements, setFilter, setSubFilter}){
+function RatingsFilterOption({filterName, subFilterElements, filterObj: {filter, setFilter, setSubFilter}}){
 
     let [subFilterIndex, setSubFilterIndex] = React.useState(0);
 
+    let isSelected = () => filter==filterName;
+
     let nextIndex = () => {
-        let newIndex = (subFilterIndex + 1) % subFilterElements.length;
-        setSubFilterIndex(newIndex);
-        setFilter(filterName);
-        setSubFilter(subFilterElements[newIndex]);
+        if (isSelected()){
+            let newIndex = (subFilterIndex + 1) % subFilterElements.length;
+            setSubFilterIndex(newIndex);
+            setSubFilter(subFilterElements[newIndex]);
+        } else {
+            setFilter(filterName);
+            setSubFilter(subFilterElements[subFilterIndex]);
+        }
     }
 
     return (
-        <div className='filterOption row centerCross' onClick={nextIndex}>
+        <div 
+            className={'filterOption row centerCross clickable '+(isSelected() ? 'selected':'')} 
+            onClick={nextIndex}
+        >
             <p className='filterName'>{filterName}</p>
             <div className='spacer'></div>
-            <div></div>{GetRatingFilterIcon(subFilterElements[subFilterIndex])}
+            <div className='subfilterOptionIcon'>
+                {GetRatingFilterIcon(subFilterElements[subFilterIndex])}
+            </div>
         </div>
     );
 }
 
-function RatingsFilter({setFilter, setSubFilter}){
+function RatingsFilter({filterObj}){
+
     return (
         <div id='ratingsFilter'>
             <RatingsFilterOption 
                 filterName='name' 
-                subFilterElements={['desc', 'asc']} 
-                setFilter={setFilter} 
-                setSubFilter={setSubFilter}
+                subFilterElements={['desc', 'asc']}
+                filterObj={filterObj}
             />
             <RatingsFilterOption 
-                filterName='population' 
+                filterName='popularity' 
                 subFilterElements={['desc', 'asc']} 
-                setFilter={setFilter} 
-                setSubFilter={setSubFilter}
+                filterObj={filterObj}
             />
             <RatingsFilterOption 
                 filterName='avg rating' 
                 subFilterElements={['desc', 'asc']} 
-                setFilter={setFilter} 
-                setSubFilter={setSubFilter}
+                filterObj={filterObj}
             />
             <RatingsFilterOption 
                 filterName='my rating' 
                 subFilterElements={['desc', 'asc']} 
-                setFilter={setFilter} 
-                setSubFilter={setSubFilter}
+                filterObj={filterObj}
             />
             <RatingsFilterOption 
                 filterName='partner rating' 
                 subFilterElements={['desc', 'asc']} 
-                setFilter={setFilter} 
-                setSubFilter={setSubFilter}
+                filterObj={filterObj}
             />
             <RatingsFilterOption 
                 filterName='gender' 
                 subFilterElements={['male', 'female', 'unisex']} 
-                setFilter={setFilter} 
-                setSubFilter={setSubFilter}
+                filterObj={filterObj}
             />
         </div>
     );
@@ -391,11 +397,12 @@ function RatingsPage({setPage}){
     let [filter, setFilter] = React.useState('popularity');
     let [subFilter, setSubFilter] = React.useState('desc');
 
+    let filterObj = {filter, setFilter, setSubFilter}; //todo: turn into useContext
+
     return (
         <div id='ratingsPage'>
-            {showSettings ? <RatingsFilter setFilter={setFilter} setSubFilter={setSubFilter}/> : null}
             <div id='filter' className='row centerCross'>
-                <div id='filterButton' onClick={()=>setShowSettings(!showSettings)}>
+                <div id='filterButton' className={'clickable' + (showSettings ? 'selected' : '')} onClick={()=>setShowSettings(!showSettings)}>
                     {FilterIcon}
                 </div>
                 <div id='filterPill' className='row centerCross'>
@@ -406,7 +413,15 @@ function RatingsPage({setPage}){
                 <input></input>
                 {SearchIcon}
             </div>
-            {ratings.map((name)=><Rating key={JSON.stringify(name)} name={name}/>)}
+            <div id='ratingsTableContainer'>
+                {showSettings ? 
+                    <div>
+                        <RatingsFilter filterObj={filterObj}/>
+                        <div id='filterBackground'></div>
+                    </div> : null
+                }
+                {ratings.map((name)=><Rating key={JSON.stringify(name)} name={name}/>)}
+            </div>
         </div>
     )
 }

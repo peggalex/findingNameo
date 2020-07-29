@@ -10,7 +10,7 @@ body {
     margin: 0;
 }
 
-button:hover, input:hover {
+button:hover, input:hover, .clickable:hover {
     cursor: pointer;
 }
 
@@ -411,14 +411,11 @@ button:hover, input:hover {
     background-color: var(--gray200);
 }
 
-#ratingsPage svg.filterIcon > * {
+#ratingsPage .filterIcon > * {
     stroke: var(--gray700);
 }
 
-#ratingsPage svg.filterIcon {
-    margin-left: 0.2rem;
-    margin-right: 0.1rem;
-    margin-left: 0.5rem;
+#ratingsPage .filterIcon {
     color: var(--gray700);
     /* border-radius: 100%; */
     /* background-color: var(--gray400); */
@@ -428,6 +425,8 @@ button:hover, input:hover {
 #ratingsPage #filter {
     height: 3rem;
     background-color: var(--gray300);
+    position: relative;
+    z-index: 2;
 
 }
 
@@ -442,21 +441,56 @@ button:hover, input:hover {
 }
 
 #ratingsPage #filterPill p{
+    height: 1rem;
+    font-size: 0.8em;
     margin: 0;
     color: var(--gray700);
 }
 
 #ratingsPage #ratingsFilter {
     position: absolute;
-    top: 10.4rem;
+    z-index: 1;
     background-color: white;
     width: 13rem;
     border-radius: 0 0 0.5rem 0.5rem;
+    box-shadow: 0 15px 35px 15px rgba(0,0,0,0.15);
 }
+
+.filterOption.selected {
+    background-color: var(--indigo400);
+    border-radius: 0.5rem;
+}
+
+#ratingsPage .filterName {
+    margin-left: 0.5rem;
+    user-select: none;
+}
+
+#ratingsPage .filterOption.selected .filterName {
+    color: white;
+}
+
+#ratingsPage .subfilterOptionIcon{
+    margin-right: 0.5rem;
+}
+
+#ratingsPage .subfilterOptionIcon > *{
+    color: var(--gray700);
+    stroke: var(--gray700);
+    font-weight: 600;
+}
+
+#ratingsPage .filterOption.selected .subfilterOptionIcon > *{
+    color: white;
+    stroke: white;
+    user-select: none;
+}
+
 
 #ratingsPage #filterPill .ratingFilterIcon {
     margin: 0 0.3rem !important;
 }
+
 
 #ratingsPage #filterPillName:after {
     content: '|';
@@ -479,6 +513,7 @@ button:hover, input:hover {
     margin-right: 0.4rem;
     width: 45%;
     max-width: 20rem;
+    padding-left: 0.5rem;
 }
 
 #ratingsPage .searchIcon {
@@ -491,16 +526,21 @@ button:hover, input:hover {
     stroke: var(--gray700);
 }
 
-#ratingsPage table {
-    border-collapse: collapse;
+#ratingsPage #ratingsTableContainer{
+    position: relative;
 }
 
-#ratingsPage tr {
-    height: 7rem;
+#ratingsPage #filterButton {
+    margin-right: 0.5rem;
+    margin-left: 0.5rem;
+    height: 2.5rem;
+    width: 2.5rem;
+    background-color: transparent;
 }
 
-#ratingsPage td {
-    padding: 0;
+#ratingsPage #filterButton.selected, #ratingsPage #filterButton:hover {
+    background-color: var(--gray500);
+    border-radius: 100%;
 }
 
 #ratingsPage .gender {
