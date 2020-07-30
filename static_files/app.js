@@ -297,21 +297,21 @@ function Rating({name}){
     );
 }
 
-let GetRatingFilterIcon = (str) => {
+const GetRatingFilterIcon = (str) => {
     let dic = {
         desc: <svg transform="rotate(90)" xmlns="http://www.w3.org/2000/svg" width={24} height={24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="arrowUp"><circle cx={12} cy={12} r={10} /><polyline points="12 16 16 12 12 8" /><line x1={8} y1={12} x2={16} y2={12} /></svg>,
         asc: <svg transform="rotate(-90)" xmlns="http://www.w3.org/2000/svg" width={24} height={24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="arrowUp"><circle cx={12} cy={12} r={10} /><polyline points="12 16 16 12 12 8" /><line x1={8} y1={12} x2={16} y2={12} /></svg>
     }
-    return dic[str] ? dic[str] : <p className='ratingFilterIcon'>{str}</p>;
+    return dic[str] ? dic[str] : <p className='ratingFilterIcon centerAll'>{str}</p>;
 }
 
 function RatingsFilterOption({filterName, subFilterElements, filterObj: {filter, setFilter, setSubFilter}}){
 
     let [subFilterIndex, setSubFilterIndex] = React.useState(0);
 
-    let isSelected = () => filter==filterName;
+    const isSelected = () => filter==filterName;
 
-    let nextIndex = () => {
+    const nextIndex = () => {
         if (isSelected()){
             let newIndex = (subFilterIndex + 1) % subFilterElements.length;
             setSubFilterIndex(newIndex);
@@ -342,27 +342,27 @@ function RatingsFilter({filterObj}){
         <div id='ratingsFilter'>
             <RatingsFilterOption 
                 filterName='name' 
-                subFilterElements={['desc', 'asc']}
+                subFilterElements={['asc', 'desc']}
                 filterObj={filterObj}
             />
             <RatingsFilterOption 
                 filterName='popularity' 
-                subFilterElements={['desc', 'asc']} 
+                subFilterElements={['asc', 'desc']} 
                 filterObj={filterObj}
             />
             <RatingsFilterOption 
                 filterName='avg rating' 
-                subFilterElements={['desc', 'asc']} 
+                subFilterElements={['asc', 'desc']} 
                 filterObj={filterObj}
             />
             <RatingsFilterOption 
                 filterName='my rating' 
-                subFilterElements={['desc', 'asc']} 
+                subFilterElements={['asc', 'desc']} 
                 filterObj={filterObj}
             />
             <RatingsFilterOption 
                 filterName='partner rating' 
-                subFilterElements={['desc', 'asc']} 
+                subFilterElements={['asc', 'desc']} 
                 filterObj={filterObj}
             />
             <RatingsFilterOption 
@@ -374,28 +374,39 @@ function RatingsFilter({filterObj}){
     );
 }
 
+const ResultsAtATime = 10;
+
 function RatingsPage({setPage}){
 
+    let searchRef = React.useRef(null);
+
     let [ratings, setRatings] = React.useState([]);
+    let [isMore, setIsMore] = React.useState(false);
 
-    React.useEffect(()=>{
-        getRatings('popularity', 10, 0).then(setRatings);
-    }, [])
+    let getRatingsSetIsMore = async (filter, subFilter, range, rangeStart) => {
 
-    let getRatings = async (orderBy, range, rangeStart) => {
-
-        return ratings = await waitForAjaxCall('get', `
+        let {ratings, isMore} = await waitForAjaxCall('get', `
             /ratings/${UserObject.getUsername()}
             /password/${UserObject.getPassword()}
-            /orderBy/${orderBy}
+            /filter/${filter}
+            /subFilter/${subFilter}
             /range/${range}
             /rangeStart/${rangeStart}
+            /search/${searchRef.current ? searchRef.current.value : ''}
         `);
+
+        setIsMore(isMore);
+        return ratings;
     }
 
     let [showSettings, setShowSettings] = React.useState(false);
     let [filter, setFilter] = React.useState('popularity');
-    let [subFilter, setSubFilter] = React.useState('desc');
+    let [subFilter, setSubFilter] = React.useState('asc');
+
+    React.useEffect(()=>{
+        getRatingsSetIsMore(filter, subFilter, ResultsAtATime, 0).then(setRatings);
+    }, [filter, subFilter])
+
 
     let filterObj = {filter, setFilter, setSubFilter}; //todo: turn into useContext
 
@@ -406,14 +417,14 @@ function RatingsPage({setPage}){
                     {FilterIcon}
                 </div>
                 <div id='filterPill' className='row centerCross'>
-                    <p id='filterPillName'>{filter}</p>
+                    <p id='filterPillName' className='centerAll'>{filter}</p>
                     {GetRatingFilterIcon(subFilter)}
                 </div>
                 <div className='spacer'></div>
-                <input></input>
+                <input ref={searchRef} onChange={()=>getRatingsSetIsMore(filter, subFilter, ResultsAtATime, 0).then(setRatings)}></input>
                 {SearchIcon}
             </div>
-            <div id='ratingsTableContainer'>
+            <div id='ratingsTableContainer' className='col'>
                 {showSettings ? 
                     <div>
                         <RatingsFilter filterObj={filterObj}/>
@@ -421,12 +432,20 @@ function RatingsPage({setPage}){
                     </div> : null
                 }
                 {ratings.map((name)=><Rating key={JSON.stringify(name)} name={name}/>)}
+                {isMore ? <button id='showMoreButton' type='button' onClick={
+                    async () => {
+                        let scrollPos = $('#mainContent').scrollTop();
+                        let newRatings = await getRatingsSetIsMore(filter, subFilter, ResultsAtATime, ratings.length)
+                        setRatings(ratings.concat(newRatings));
+                        $('#mainContent').scrollTop(scrollPos);
+                    }
+                }>show more</button> : ''}
             </div>
         </div>
     )
 }
 
-var Logo = <svg className="pram" x="0px" y="0px" viewBox="-100 0 850 1000">
+const Logo = <svg className="pram" x="0px" y="0px" viewBox="-100 0 850 1000">
     <g>
     <g className="bubble">
         <defs>
@@ -639,7 +658,7 @@ var Logo = <svg className="pram" x="0px" y="0px" viewBox="-100 0 850 1000">
     </g>
 </svg>
 
-var Leaves = <svg className='leaves' x="0px" y="0px" viewBox="0 0 1000 1000">
+const Leaves = <svg className='leaves' x="0px" y="0px" viewBox="0 0 1000 1000">
     <g id="leaves">
     <g>
         <path fill="#48BB78" d="M-12.184-23.419c0,0-19.612,29.382,50.436,48.995C38.251,25.576,33.115-37.935-12.184-23.419z" />
@@ -681,19 +700,19 @@ var Leaves = <svg className='leaves' x="0px" y="0px" viewBox="0 0 1000 1000">
     </g>
 </svg>
 
-var StarIcon = <svg xmlns="http://www.w3.org/2000/svg" width={48} height={48} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="starIcon"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>;
+const StarIcon = <svg xmlns="http://www.w3.org/2000/svg" width={48} height={48} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="starIcon"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>;
 
-var CogIcon = <svg className='cogIcon' xmlns="http://www.w3.org/2000/svg" width={24} height={24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx={12} cy={12} r={3} /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
+const CogIcon = <svg className='cogIcon' xmlns="http://www.w3.org/2000/svg" width={24} height={24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx={12} cy={12} r={3} /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
 
-var RatingsIcon = <svg xmlns="http://www.w3.org/2000/svg" width={48} height={48} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="ratingsIcon"><line x1={8} y1={6} x2={21} y2={6} /><line x1={8} y1={12} x2={21} y2={12} /><line x1={8} y1={18} x2={21} y2={18} /><line x1={3} y1={6} x2="3.01" y2={6} /><line x1={3} y1={12} x2="3.01" y2={12} /><line x1={3} y1={18} x2="3.01" y2={18} /></svg>
+const RatingsIcon = <svg xmlns="http://www.w3.org/2000/svg" width={48} height={48} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="ratingsIcon"><line x1={8} y1={6} x2={21} y2={6} /><line x1={8} y1={12} x2={21} y2={12} /><line x1={8} y1={18} x2={21} y2={18} /><line x1={3} y1={6} x2="3.01" y2={6} /><line x1={3} y1={12} x2="3.01" y2={12} /><line x1={3} y1={18} x2="3.01" y2={18} /></svg>
 
-var PartnerIcon = <svg xmlns="http://www.w3.org/2000/svg" width={48} height={48} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="partnerIcon"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx={9} cy={7} r={4} /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+const PartnerIcon = <svg xmlns="http://www.w3.org/2000/svg" width={48} height={48} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="partnerIcon"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx={9} cy={7} r={4} /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
 
-var SearchIcon = <svg xmlns="http://www.w3.org/2000/svg" width={24} height={24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="searchIcon"><circle cx={11} cy={11} r={8} /><line x1={21} y1={21} x2="16.65" y2="16.65" /></svg>
+const SearchIcon = <svg xmlns="http://www.w3.org/2000/svg" width={24} height={24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="searchIcon"><circle cx={11} cy={11} r={8} /><line x1={21} y1={21} x2="16.65" y2="16.65" /></svg>
 
-var FilterIcon =  <svg xmlns="http://www.w3.org/2000/svg" width={24} height={24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="filterIcon"><line x1={4} y1={21} x2={4} y2={14} /><line x1={4} y1={10} x2={4} y2={3} /><line x1={12} y1={21} x2={12} y2={12} /><line x1={12} y1={8} x2={12} y2={3} /><line x1={20} y1={21} x2={20} y2={16} /><line x1={20} y1={12} x2={20} y2={3} /><line x1={1} y1={14} x2={7} y2={14} /><line x1={9} y1={8} x2={15} y2={8} /><line x1={17} y1={16} x2={23} y2={16} /></svg>
+const FilterIcon =  <svg xmlns="http://www.w3.org/2000/svg" width={24} height={24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="filterIcon"><line x1={4} y1={21} x2={4} y2={14} /><line x1={4} y1={10} x2={4} y2={3} /><line x1={12} y1={21} x2={12} y2={12} /><line x1={12} y1={8} x2={12} y2={3} /><line x1={20} y1={21} x2={20} y2={16} /><line x1={20} y1={12} x2={20} y2={3} /><line x1={1} y1={14} x2={7} y2={14} /><line x1={9} y1={8} x2={15} y2={8} /><line x1={17} y1={16} x2={23} y2={16} /></svg>
 
-var RateIcon = <svg xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="48px" height="48px" viewBox="0 0 48 48" enableBackground="new 0 0 48 48" xmlSpace="preserve" className='rateIcon'>
+const RateIcon = <svg xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="48px" height="48px" viewBox="0 0 48 48" enableBackground="new 0 0 48 48" xmlSpace="preserve" className='rateIcon'>
 <g>
   <polygon fill="none" stroke="#000000" strokeWidth="3.5646" strokeLinecap="round" strokeLinejoin="round" strokeMiterlimit={10} points="
 24,2.545 30.837,16.393 46.122,18.628 35.062,29.401 37.671,44.621 24,37.432 10.328,44.621 12.938,29.401 1.878,18.628 

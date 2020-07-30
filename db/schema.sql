@@ -1,9 +1,9 @@
 CREATE TABLE name (
-	nid INTEGER PRIMARY KEY,
 	name VARCHAR(60),
 	isMale INTEGER,
 	rank INTEGER,
-	creator VARCHAR(20) default '<ssa>',
+	creator VARCHAR(20),
+	nid INTEGER PRIMARY KEY,
 	FOREIGN KEY (creator) REFERENCES user(username)
 );
 
@@ -18,8 +18,9 @@ CREATE TABLE rating (
 	rating NUMERIC,
 	timestamp CHAR(24),
 	nid INTEGER,
-	FOREIGN KEY (username) user(username),
-	FOREIGN KEY (nid) name(nid)
+	PRIMARY KEY (username, nid),	
+	FOREIGN KEY (username) REFERENCES user(username),
+	FOREIGN KEY (nid) REFERENCES name(nid)
 );
 
 CREATE TABLE partnerRequest(
@@ -41,7 +42,7 @@ CREATE TRIGGER deleteUserTrigger
 BEFORE DELETE ON user
 FOR EACH ROW
 BEGIN
-    DELETE FROM name WHERE creator=OLD.username;
+    DELETE FROM name WHERE creator=OLD.username AND creator<>'<default>';
     DELETE FROM rating WHERE rating.username=OLD.username;
     DELETE FROM partners WHERE OLD.username in (partner1, partner2);
     DELETE FROM partnerRequest WHERE OLD.username = requestor;

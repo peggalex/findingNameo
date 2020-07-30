@@ -34,6 +34,12 @@ button:hover, input:hover, .clickable:hover {
     align-items: center;
 }
 
+.centerAll {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
 .centerText {
     text-align: center;
 }
@@ -375,7 +381,7 @@ button:hover, input:hover, .clickable:hover {
 }
 
 #mainPage footer, #mainPage header {
-    height: 22rem;
+    min-height: 7rem;
 }
 
 #mainContent {
@@ -435,15 +441,14 @@ button:hover, input:hover, .clickable:hover {
     color: var(--gray700);
     margin: 0;
     padding: 0.15rem 0.1rem 0.15rem 0.5rem;
-    font-size: 0.8rem;
-    font-weight: 500;
     border-radius: 2rem;
 }
 
 #ratingsPage #filterPill p{
-    height: 1rem;
-    font-size: 0.8em;
     margin: 0;
+    font-weight: 500;
+    font-size: 0.8rem;
+    height: 1rem;   
     color: var(--gray700);
 }
 
@@ -456,7 +461,7 @@ button:hover, input:hover, .clickable:hover {
     box-shadow: 0 15px 35px 15px rgba(0,0,0,0.15);
 }
 
-.filterOption.selected {
+#ratingsPage .filterOption.selected {
     background-color: var(--indigo400);
     border-radius: 0.5rem;
 }
@@ -478,12 +483,12 @@ button:hover, input:hover, .clickable:hover {
     color: var(--gray700);
     stroke: var(--gray700);
     font-weight: 600;
+    user-select: none;
 }
 
 #ratingsPage .filterOption.selected .subfilterOptionIcon > *{
     color: white;
     stroke: white;
-    user-select: none;
 }
 
 
@@ -652,6 +657,19 @@ button:hover, input:hover, .clickable:hover {
 
 #ratingsPage .partnerRatings {
     margin-right: 1rem;
+}
+
+#ratingsPage #showMoreButton {
+    width: 70vw;
+    max-width: 30rem;
+    align-self: center;
+    height: 3rem;
+    border-radius: 1.5rem;
+    border: solid 0.1rem var(--indigo700);
+    background-color: white;
+    color: var(--indigo700);
+    font-size: 1.5rem;
+    margin: 1rem 0;
 }
 
 @media only screen and (orientation: portrait) {

@@ -112,8 +112,11 @@ async function queryExists(queryString, params = []){
 			await queryGet(queryString, params);
 			resolve(true);
 		} catch (e) {
-			if (e instanceof NotFoundError) resolve(false);
-			reject(e);
+			if (e instanceof NotFoundError) {
+				resolve(false);
+			} else {
+				reject(e);
+			}
 		}
 	})
 }
@@ -493,45 +496,6 @@ getPartner = (username) => queryGet(
 	[username, username]
 );
 
-app.get('/rate/:u/password/:p/name/:n/isMale/:g/rating/:r', async function(req,res){
-
-	let username = req.params.u,
-		password = req.params.p,
-		name = req.params.n,
-		isMale = req.params.g,
-		rating = req.params.r;
-
-	try {
-		await authenticate(username, password);
-
-		let partners = [username];
-		/*let msg = {
-			username: username,
-			name: name,
-			isMale: isMale,
-			rating: rating,
-			creator: creator
-		};*/
-		let msg = { update: 'me'}
-		try {
-			let partner = await getPartner(username);
-			partners.push(partner.username);
-
-		} catch (e) {
-			if (!(e instanceof NotFoundError)) throw e;
-		}
-		for (let partnerUsername of partners){
-			ratingConnections.tryToSend(partnerUsername, msg);
-		}
-
-		res.status(200);
-		res.send('');
-
-	} catch (e) {
-		handleResponseErrors(e, res);
-	}
-});
-
 async function sendPartnerRequest(requestor, requestee){
 
 	await usernameExists(requestee);
@@ -604,55 +568,84 @@ function sendRequest(username, friend, isRequester){
 	);
 }
 
-async function rate(username, name, isMale, rating){
-
-	let nameExists = await queryGet(
-		`SELECT *
-		FROM name
-		WHERE name = ? AND isMale = ? AND creator = ?`,
-		[name, isMale, username]
-	);
-	let ratingExists;
-
-	if (!nameExists){
-		await queryRun(
-			`INSERT INTO name(name, isMale, rank, creator)
-			VALUES(?, ?, ?, ?)`,
-			[username, name, null, username]
-		);
-		ratingExists = false; // if there's no name, we know there's no rating
-	} else {
-		ratingExists = await queryExists(
-			`SELECT *
-			FROM rating
-			WHERE username = ? AND name = ? AND isMale = ? AND creator = ?`,
-			[username, name, isMale, username]
-		); // even if the name exists, we may not have rated it yet, e.g. partner's created a name
-	}
-
+async function createOrUpdateRating(username, name, isMale, rating){
 	let nid = (await queryGet(
 		`SELECT nid
 		FROM name
-		WHERE name = ? AND isMale = ? AND creator = ?`,
-		[name, isMale, creator]
+		WHERE name = ? AND isMale = ? AND creator in (?, '<default>')`,
+		[name, isMale, username]
 	)).nid;
 
+	let ratingExists = await queryExists(
+		`SELECT *
+		FROM rating
+		WHERE username = ? AND nid = ?`,
+		[username, nid]
+	);
+	let timeStr = new Date().toISOString();
 	if (ratingExists){
 		await queryRun(
 			`UPDATE rating
-			SET rating = ?
+			SET rating = ?, timestamp = ?
 			WHERE username = ? AND nid = ?`,
-			[rating, username, nid]
+			[rating, timestamp, username, nid]
 		);
 	} else {
 		await queryRun(
 			`INSERT INTO rating(username, rating, timestamp, nid)
 			VALUES(?, ?, ?, ?)`,
-			[username, rating, new Date().toISOString(), nid]
+			[username, rating, timeStr, nid]
 		);
 	}
-
 }
+
+async function rate(username, name, isMale, rating){
+
+	name = name.toLowerCase();
+	let creator, nameExists;
+
+	for (creator of ['<default>', username]){
+		nameExists = await queryExists(
+			`SELECT *
+			FROM name
+			WHERE name = ? AND isMale = ? AND creator = ?`,
+			[name, isMale, creator]
+		);
+		if (nameExists) break;
+	}
+	if (!nameExists){
+		await queryRun(
+			`INSERT INTO name(name, isMale, rank, creator)
+			VALUES(?, ?, ?, ?)`,
+			[name, isMale, null, username]
+		);
+		console.log(
+			`New name ${name} with gender ${isMale} and creator ${creator}.`
+		);
+	}
+	createOrUpdateRating(username, name, isMale, rating);
+}
+
+// register api
+app.put('/rate/:u/password/:p/name/:n/isMale/:m/rating/:r', async function(req, res) {
+	let username = req.params.u,
+		password = req.params.p,
+		name = req.params.n,
+		isMale = req.params.m,
+		rating = req.params.r;
+
+	try {
+		await authenticate(username, password);
+
+		await rate(username, name, isMale, rating);
+
+		res.status(200);
+		res.send({success: `rated ${name}, gender ${isMale}`});
+
+	} catch (e) {
+		handleResponseErrors(e, res);
+	}
+});
 
 app.listen(port, function () {
   console.log('Example app listening on port '+port);
@@ -706,55 +699,92 @@ app.put('/register/:u/nickname/:n/password/:p', async function(req, res) {
 	}
 });
 
-
-app.get('/ratings/:u/password/:p/orderBy/:o/range/:r/rangeStart/:rs', async function(req,res){
+async function getRating(req,res){
 
 	let username = req.params.u,
 		password = req.params.p,
-		orderBy = req.params.o,
+		filter = req.params.f,
+		subFilter = req.params.sf,
+		search = req.params.s,
 		range = req.params.r,
 		rangeStart = req.params.rs;
 
-	let orderByQuery;
-	switch(orderBy){
-		case "popularity":
+	let whereQuery = '',
+		orderByQuery = '';
+
+	switch(`${filter} ${subFilter}`){
+		case ("popularity asc"):
 			orderByQuery = 'rank';
 			break;
 
-		case "name":
+		case ("popularity desc"):
+			orderByQuery = 'rank DESC';
+			break;
+		
+		case ("name asc"):
 			orderByQuery = 'name';
+			break;
+
+		case ("name desc"):
+			orderByQuery = 'name DESC';
+			break;
+
+		case ("gender male"):
+			whereQuery = 'isMale = 1';
+			orderByQuery = 'rank';
+			break;
+
+		case ("gender female"):
+			whereQuery += 'isMale = 0';
+			orderByQuery = 'rank';
+			break;
+
+		case ("gender unisex"):
+			whereQuery += 'isMale = -1';
+			orderByQuery = 'rank';
 			break;
 
 		default:
 			throw new Exception('bad order by.');
 	}
 
-	console.log(`SELECT *
+	if (search) {
+		let regex = `name LIKE '${search}%'`
+		whereQuery = whereQuery ? `${whereQuery} AND ${regex}` : regex; 
+	}
+
+	console.log('debug query:\n', `SELECT *
 	FROM name
-	ORDER BY ${orderByQuery}
-	LIMIT ${range}
+	${whereQuery!='' ? 'WHERE ' + whereQuery : ''}
+	${orderByQuery!='' ? 'ORDER BY ' + orderByQuery : ''}
+	LIMIT ${parseInt(range)+1}
 	OFFSET ${rangeStart}`);
 	
 	try {
 		await authenticate(username, password);
 
+		for (param of [filter, subFilter, search, range, rangeStart]){
+			if (!isAlphaNumeric(param)){
+				throw new InputError(`${param} should be alpha numeric.`)
+			}
+		}
 		let ratings = await queryAll(
 			`SELECT *
 			FROM name
-			ORDER BY ${orderByQuery}
+			${whereQuery!='' ? 'WHERE ' + whereQuery : ''}
+			${orderByQuery!='' ? 'ORDER BY ' + orderByQuery : ''}
 			LIMIT ?
 			OFFSET ?`,
-			[range, rangeStart]
+			[parseInt(range)+1, rangeStart]
 		);
 
 		res.status(200);
-		res.send(ratings);
+		res.send({ratings: ratings.slice(0, range), isMore: ratings.length==parseInt(range)+1});
 
 	} catch (e) {
 		handleResponseErrors(e, res);
 	}
-});
+}
 
-
-
-
+app.get('/ratings/:u/password/:p/filter/:f/subFilter/:sf/range/:r/rangeStart/:rs/search/:s', getRating);
+app.get('/ratings/:u/password/:p/filter/:f/subFilter/:sf/range/:r/rangeStart/:rs/search/', getRating);

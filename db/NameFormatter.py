@@ -7,13 +7,14 @@ class Name:
     def __init__(self, line):
         name, genderChar, pop = line.strip().split(',')
         
-        self.name = name
+        self.name = name.lower()
         self.isMale = int(genderChar == 'M') #sqlite doens't have bools
         self.pop = int(pop)
         self.rank = None
+        self.creator = "<default>"
 
     def __str__(self):
-        return ",".join((str(x) for x in (self.name, self.isMale, self.rank, '<ssa>')))+'\n'
+        return ",".join((str(x) for x in (self.name, self.isMale, self.rank, self.creator)))
 
     
 class Aggregate:
@@ -38,7 +39,6 @@ class NameAggregate(Aggregate):
     def assignPopularity(self):
         
         keysOrdered = sorted(self._dic)
-
         
         for rank in range(1, len(keysOrdered)+1):
 
@@ -49,6 +49,7 @@ class NameAggregate(Aggregate):
                 
                 nameObj.rank = rank
 
+writeLine = lambda line, wf: wf.write(line + '\n')
 
 if __name__=='__main__':
     with open(filename, encoding='utf-8') as rf,\
@@ -74,9 +75,9 @@ if __name__=='__main__':
         femaleNameAggregate.assignPopularity()
 
         for maleName in maleNameAggregate.getElements():
-            wf.write(str(maleName))
+            writeLine(str(maleName), wf)
 
         for femaleName in femaleNameAggregate.getElements():
-            wf.write(str(femaleName))
+            writeLine(str(femaleName), wf)
 
         print(f'done, {i} lines')
