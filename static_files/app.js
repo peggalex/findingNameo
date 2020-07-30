@@ -47,6 +47,19 @@ function isMaleStr(isMale){
     }
 }
 
+function genderStr(isMale){
+    switch (isMale){
+        case -1: 
+            return 'unisex';
+        case 0:
+            return 'female';
+        case 1:
+            return 'male';
+        default:
+            throw Exception('genderStr be an int in {-1,0,1}.');
+    }
+}
+
 class UserObject {
     static instance = new UserObject(); // singleton
     
@@ -216,7 +229,7 @@ function PersonRating({isYou, rating}){
 function MainPageNav({name, icon, setMainPage, mainPage}){
     return (
         <div 
-            className={'mainPageNav col center centerCross '+(mainPage==name+'Page' ? 'selected' : '')} 
+            className={'mainPageNav col centerAll clickable '+(mainPage==name+'Page' ? 'selected' : '')} 
             onClick={()=>setMainPage(name+'Page')}
         >
             {icon}
@@ -242,7 +255,7 @@ function MainPage({setPage}){
             <section id='mainContent'>
                 {pages[mainPage]}
             </section>
-            <footer className='row spaceEvenly centerCross'>
+            <footer className='row spaceEvenly centerAll'>
                 <MainPageNav name='ratings' icon={RatingsIcon} setMainPage={setMainPage} mainPage={mainPage}/>
                 <MainPageNav name='partner' icon={PartnerIcon} setMainPage={setMainPage} mainPage={mainPage}/>
                 <MainPageNav name='rate' icon={RateIcon} setMainPage={setMainPage} mainPage={mainPage}/>
@@ -279,7 +292,7 @@ function Rating({name}){
             </div>
             <div className='genderPlaceholder'></div>
             <div className='namePop'>
-                <p className='name'>{name.name}</p>
+                <p className={'name '+(name.name.length > 7 ? 'long':'')}>{name.name}</p>
                 <div className='row'>
                     <p className='popLabel'>popularity</p>
                     <p className='pop'>{name.rank}</p>
@@ -428,7 +441,6 @@ function RatingsPage({setPage}){
                 {showSettings ? 
                     <div>
                         <RatingsFilter filterObj={filterObj}/>
-                        <div id='filterBackground'></div>
                     </div> : null
                 }
                 {ratings.map((name)=><Rating key={JSON.stringify(name)} name={name}/>)}
@@ -443,6 +455,50 @@ function RatingsPage({setPage}){
             </div>
         </div>
     )
+}
+
+function RatePage({setPage, name, isMale, rating, myRating, partnerRating}){
+
+    return (
+        <div id='RatePage'>
+            <div>
+                <div>
+                    <p>{name}</p>
+                    <div>
+                        <p>Gender: {genderStr(isMale)}</p>
+                    </div>
+                    <div>
+                        {popIcon}
+                        <p className='popLabel'>popularity</p>
+                        <p className='pop'>{name.rank}</p>
+                        <p className={popSuffix + ' popSuffix'}></p>
+                    </div>
+                    <div>
+                        {StarIcon}
+                        <p>{rating}</p>
+                    </div>
+                </div>
+                <div className='row'>
+                    <div className='rating'>
+                        <p>Your Rating</p>
+                        {CogIcon}
+                        <input className='ratingNumber'></input>
+                    </div>
+                    <div className='rating'>
+                        <p>Partner Rating</p>
+                        <p className='ratingNumber'>{partnerRating}</p>
+                    </div>
+                </div>
+                <div className='col centerCross'>
+                    <p className='newRateDesc'>Rate a random name you haven't rated yet</p>
+                    <button id='randomName' className='newRate' type='button'>Random Name</button>
+                    <p className='newRateDesc'>Search for an existing name, or add a new one</p>
+                    <button id='searchName' className='newRate'></button>
+                    {SearchIcon}
+                </div>
+            </div>
+        </div>
+    );
 }
 
 const Logo = <svg className="pram" x="0px" y="0px" viewBox="-100 0 850 1000">

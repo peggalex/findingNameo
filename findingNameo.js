@@ -745,7 +745,7 @@ async function getRating(req,res){
 			break;
 
 		default:
-			throw new Exception('bad order by.');
+			throw new Error('bad order by.');
 	}
 
 	if (search) {
