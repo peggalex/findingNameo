@@ -701,48 +701,37 @@ app.put('/register/:u/nickname/:n/password/:p', async function(req, res) {
 
 async function getRating(req,res){
 
-	let username = req.params.u,
-		password = req.params.p,
-		filter = req.params.f,
-		subFilter = req.params.sf,
-		search = req.params.s,
-		range = req.params.r,
-		rangeStart = req.params.rs;
+	let username = req.params.u, filter = req.params.f,
+		subFilter = req.params.sf, search = req.params.s,
+		range = req.params.r, rangeStart = req.params.rs;
 
 	let whereQuery = '',
 		orderByQuery = '';
 
 	switch(`${filter} ${subFilter}`){
 		case ("popularity asc"):
-			orderByQuery = 'rank';
-			break;
+			orderByQuery = 'rank'; break;
 
 		case ("popularity desc"):
-			orderByQuery = 'rank DESC';
-			break;
+			orderByQuery = 'rank DESC'; break;
 		
 		case ("name asc"):
-			orderByQuery = 'name';
-			break;
+			orderByQuery = 'name'; break;
 
 		case ("name desc"):
-			orderByQuery = 'name DESC';
-			break;
+			orderByQuery = 'name DESC'; break;
 
 		case ("gender male"):
 			whereQuery = 'isMale = 1';
-			orderByQuery = 'rank';
-			break;
+			orderByQuery = 'rank'; break;
 
 		case ("gender female"):
 			whereQuery += 'isMale = 0';
-			orderByQuery = 'rank';
-			break;
+			orderByQuery = 'rank'; break;
 
 		case ("gender unisex"):
 			whereQuery += 'isMale = -1';
-			orderByQuery = 'rank';
-			break;
+			orderByQuery = 'rank'; break;
 
 		default:
 			throw new Error('bad order by.');
@@ -788,3 +777,10 @@ async function getRating(req,res){
 
 app.get('/ratings/:u/password/:p/filter/:f/subFilter/:sf/range/:r/rangeStart/:rs/search/:s', getRating);
 app.get('/ratings/:u/password/:p/filter/:f/subFilter/:sf/range/:r/rangeStart/:rs/search/', getRating);
+
+app.get('/randomName/:u/password/:p', (req, res)=>{
+	let username = req.params.u,
+		password = req.params.p;
+	
+	
+});

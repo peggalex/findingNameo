@@ -229,7 +229,7 @@ function PersonRating({isYou, rating}){
 function MainPageNav({name, icon, state, dispatch}){
     return (
         <div 
-            className={'mainPageNav col centerAll clickable '+(mainPage==name+'Page' ? 'selected' : '')} 
+            className={'mainPageNav col centerAll clickable '+(state.pageName==name+'Page' ? 'selected' : '')} 
             onClick={()=>dispatch({
                 type: 'named',
                 pageName: name+'Page'
@@ -241,26 +241,37 @@ function MainPageNav({name, icon, state, dispatch}){
     );
 }
 
+var pages;
+
 function MainPage({setPage}){
 
     let [state, dispatch] = React.useReducer((state, action)=>{
         switch (action.type){
             case 'named':
-                state.page = pages[action.pageName];
-                break;
+                return {
+                    name: action.pageName, 
+                    page: pages[action.pageName]
+                }
+
             case 'element':
-                state.page = action.element;
-                break;
+                return {
+                    name: action.pageName,
+                    page: action.element
+                }
+
             default:
                 throw new Error('bad reducer action type.');
         }
-        return state;
-    }, {page: pages.ratingsPage});
+    }, {name: '', page: null});
 
-    let pages = {
-        ratingsPage: <RatingsPage dispatch={dispatch}/>,
-        ratePage: <RatePage dispatch={dispatch}/>
-    }
+    React.useEffect(()=>{
+        //runs once after first render pass (componentDidMount) iff diff = []
+        pages = {
+            ratingsPage: <RatingsPage dispatch={dispatch}/>,
+            ratePage: <RatePage dispatch={dispatch}/>
+        }
+        dispatch({type: 'named', pageName: 'ratingsPage'});
+    }, []);
 
     return (
         <div id='mainPage' className='col'>
@@ -480,6 +491,10 @@ class Rate {
         this.rating = rating;
         this.myRating = myRating;
         this.partnerRating = partnerRating;
+    }
+
+    static getRandomRate(){
+        
     }
 }
 
