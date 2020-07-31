@@ -43,7 +43,7 @@ function isMaleStr(isMale){
         case 1:
             return 'boy';
         default:
-            throw Exception('isMale must be an int in {-1,0,1}.');
+            throw new Error('isMale must be an int in {-1,0,1}.');
     }
 }
 
@@ -56,7 +56,7 @@ function genderStr(isMale){
         case 1:
             return 'male';
         default:
-            throw Exception('genderStr be an int in {-1,0,1}.');
+            throw new Error('genderStr be an int in {-1,0,1}.');
     }
 }
 
@@ -114,7 +114,7 @@ function FrontPage({setPage}){
 
 function LoginPage({setPage}){
 
-    let login = async (e) => {
+    const login = async (e) => {
         e.preventDefault();
 
         let form = e.target;
@@ -163,7 +163,7 @@ function SignupPage({setPage}){
 
     let formRef = React.useRef();
 
-    let validate = () => {
+    const validate = () => {
         let form = formRef.current;
         if (form.password.value !== form.password2.value){
             form.password2.setCustomValidity("passwords must match.");
@@ -173,7 +173,7 @@ function SignupPage({setPage}){
         }
     }
 
-    let signup = async (e) => {
+    const signup = async (e) => {
         e.preventDefault();
 
         let form = formRef.current;
@@ -226,11 +226,14 @@ function PersonRating({isYou, rating}){
     );
 }
 
-function MainPageNav({name, icon, setMainPage, mainPage}){
+function MainPageNav({name, icon, state, dispatch}){
     return (
         <div 
             className={'mainPageNav col centerAll clickable '+(mainPage==name+'Page' ? 'selected' : '')} 
-            onClick={()=>setMainPage(name+'Page')}
+            onClick={()=>dispatch({
+                type: 'named',
+                pageName: name+'Page'
+            })}
         >
             {icon}
             <p>{name}</p>
@@ -240,10 +243,23 @@ function MainPageNav({name, icon, setMainPage, mainPage}){
 
 function MainPage({setPage}){
 
-    let [mainPage, setMainPage] = React.useState("ratingsPage");
+    let [state, dispatch] = React.useReducer((state, action)=>{
+        switch (action.type){
+            case 'named':
+                state.page = pages[action.pageName];
+                break;
+            case 'element':
+                state.page = action.element;
+                break;
+            default:
+                throw new Error('bad reducer action type.');
+        }
+        return state;
+    }, {page: pages.ratingsPage});
 
     let pages = {
-        ratingsPage: <RatingsPage setPage={setMainPage}/>
+        ratingsPage: <RatingsPage dispatch={dispatch}/>,
+        ratePage: <RatePage dispatch={dispatch}/>
     }
 
     return (
@@ -253,12 +269,12 @@ function MainPage({setPage}){
                 {CogIcon}
             </header>
             <section id='mainContent'>
-                {pages[mainPage]}
+                {state.page}
             </section>
             <footer className='row spaceEvenly centerAll'>
-                <MainPageNav name='ratings' icon={RatingsIcon} setMainPage={setMainPage} mainPage={mainPage}/>
-                <MainPageNav name='partner' icon={PartnerIcon} setMainPage={setMainPage} mainPage={mainPage}/>
-                <MainPageNav name='rate' icon={RateIcon} setMainPage={setMainPage} mainPage={mainPage}/>
+                <MainPageNav name='ratings' icon={RatingsIcon} state={state} dispatch={dispatch}/>
+                <MainPageNav name='partner' icon={PartnerIcon} state={state} dispatch={dispatch}/>
+                <MainPageNav name='rate' icon={RateIcon} state={state} dispatch={dispatch}/>
             </footer>
         </div>
     );
@@ -389,7 +405,7 @@ function RatingsFilter({filterObj}){
 
 const ResultsAtATime = 10;
 
-function RatingsPage({setPage}){
+function RatingsPage({dispatch}){
 
     let searchRef = React.useRef(null);
 
@@ -457,7 +473,23 @@ function RatingsPage({setPage}){
     )
 }
 
-function RatePage({setPage, name, isMale, rating, myRating, partnerRating}){
+class Rate {
+    constructor(name, isMale, rating, myRating, partnerRating){
+        this.name = name;
+        this.isMale = isMale;
+        this.rating = rating;
+        this.myRating = myRating;
+        this.partnerRating = partnerRating;
+    }
+}
+
+function RatePage({dispatch, name, isMale, rating, myRating, partnerRating}){
+
+    let [rateObj, setRateObj] = React.useState(null);
+
+    React.useEffect(()=>{
+        waitForAjaxCall('get', 'name').then()
+    }, [])
 
     return (
         <div id='RatePage'>
