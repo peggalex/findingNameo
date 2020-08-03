@@ -1,19 +1,10 @@
-/* 
- * What about serving up static content, kind of like apache? 
- * This time, you are required to present a user and password to the login route
- * before you can read any static content.
- */
-
 var process = require('process');
-// run ftd.js as 
 
 // nodejs ftd.js PORT_NUMBER
 var port = parseInt(process.argv[2]); 
 var express = require('express');
-var cookieParser = require('cookie-parser');
 
 var app = express();
-app.use(cookieParser()); // parse cookies before processing other middleware
 
 const sqlite3 = require('sqlite3').verbose();
 
@@ -127,6 +118,8 @@ isHex = (str) => RegExp(/^[\da-f]+$/i).test(str);
 isUsername = (str) => RegExp(/^[\da-z_]{1,20}$/i).test(str);
 isNickname = (str) => RegExp(/^[\da-z_ ]{1,20}$/i).test(str);
 
+
+
 /* throws InputError, NotFoundError */
 async function usernameExists(username){
 	if (!isAlphaNumeric(username)){
@@ -176,7 +169,6 @@ async function handleResponseErrors(e, res){
 	res.send({error: e.message});
 	console.log(e.message);
 }
-
 
 // ================================================================================
 // ================================================================================
@@ -353,35 +345,6 @@ ratingWebSocket.on('connection', async function(ws, req) {
 	console.log(`'${username}' message websocket connected.`);
 });
 
-
-/*
-var friendPort = port + 2; 
-const friendConnections = new WebSocketConnections();
-const friendWebSocket = new WebSocketServer({port: friendPort});
-
-friendWebSocket.on('connection', async function(ws, req) {
-	try {
-		await WebSocketStuff.auth(req.url, ws);
-	} catch (e) {
-		ws.close();
-		if (e instanceof BadWebSocketError) {
-			console.log(e.message);
-			return;
-		}
-		throw e;
-	}
-	let {username, password} = WebSocketStuff.getUsernamePassword(req.url);
-
-	ws.username = username;
-	friendConnections.addConnection(username, ws);
-
-	ws.on('close', function(){
-		console.log(`'${ws.username}' friend websocket disconnected.`)
-		friendConnections.removeConnection(username, ws);
-	});
-	console.log(`'${username}' friends websocket connected.`);
-});
-*/
 
 var partnerRequestPort = port + 3; 
 const partnerConnections = new WebSocketConnections();
@@ -701,7 +664,8 @@ app.put('/register/:u/nickname/:n/password/:p', async function(req, res) {
 
 async function getRating(req,res){
 
-	let username = req.params.u, filter = req.params.f,
+	let username = req.params.u, 
+		password = req.params.p, filter = req.params.f,
 		subFilter = req.params.sf, search = req.params.s,
 		range = req.params.r, rangeStart = req.params.rs;
 
@@ -742,13 +706,6 @@ async function getRating(req,res){
 		whereQuery = whereQuery ? `${whereQuery} AND ${regex}` : regex; 
 	}
 
-	console.log('debug query:\n', `SELECT *
-	FROM name
-	${whereQuery!='' ? 'WHERE ' + whereQuery : ''}
-	${orderByQuery!='' ? 'ORDER BY ' + orderByQuery : ''}
-	LIMIT ${parseInt(range)+1}
-	OFFSET ${rangeStart}`);
-	
 	try {
 		await authenticate(username, password);
 
@@ -758,7 +715,7 @@ async function getRating(req,res){
 			}
 		}
 		let ratings = await queryAll(
-			`SELECT *
+			`SELECT name, isMale, pop, rank, creator, nid
 			FROM name
 			${whereQuery!='' ? 'WHERE ' + whereQuery : ''}
 			${orderByQuery!='' ? 'ORDER BY ' + orderByQuery : ''}
@@ -778,9 +735,94 @@ async function getRating(req,res){
 app.get('/ratings/:u/password/:p/filter/:f/subFilter/:sf/range/:r/rangeStart/:rs/search/:s', getRating);
 app.get('/ratings/:u/password/:p/filter/:f/subFilter/:sf/range/:r/rangeStart/:rs/search/', getRating);
 
-app.get('/randomName/:u/password/:p', (req, res)=>{
+app.get('/randomName/:u/password/:p/gender/:g', async (req, res)=>{
 	let username = req.params.u,
-		password = req.params.p;
+		password = req.params.p,
+		gender = req.params.g;
 	
-	
+	try {
+		await authenticate(username, password);
+
+		let genderWhere = 'WHERE isMale=';
+
+		switch (gender){
+			case 'male':
+				genderWhere += '1';
+				break;
+
+			case 'female':
+				genderWhere += '0';
+				break;
+			
+			case 'unisex':
+				genderWhere += '-1';
+				break;
+			
+			case 'any':
+				genderWhere = '';
+				break;
+
+			default:
+				throw new InputError(`gender "${gender}" not in {male, female, unisex, any}`);
+		}
+
+		let totalSquared = parseInt((await queryGet(`
+			SELECT sum(pop*pop) as totalSquared
+			FROM name
+			${genderWhere}
+		`, [])).totalSquared);
+
+		let partner = null;
+		try {
+			partner = await getPartner(username);
+		} catch (e) {
+			if (!(e instanceof NotFoundError)) throw e;
+		}
+
+		let defaultOrCreated = Math.round(Math.random());
+
+		let name; 
+
+		if (partner != null && (defaultOrCreated || gender=='unisex')) {
+
+			throw new Error('what the snalex');
+			let offset = Math.floor(Math.random()*parseInt(unratedCreatedNames));
+
+
+		} else {
+
+			let target = Math.floor(Math.random()*(totalSquared+1));
+			let totalRef = { runningTotal: 0, row: null }
+			await new Promise(async (resolve, reject) => db.each(`
+					SELECT name, isMale, pop, rank, creator, nid
+					FROM name
+					${genderWhere}
+					ORDER BY pop
+				`, 
+				[], 
+				(err, row) => {
+					if (err) reject(new DatabaseError(err));
+					if (totalRef.row) return;
+					let popSquared = parseInt(row.pop)**2;
+					if (
+						totalRef.runningTotal <= target && 
+						target <= totalRef.runningTotal + popSquared
+					){
+						totalRef.row = row;
+						resolve();
+					}
+					totalRef.runningTotal += popSquared;
+				},
+				() => resolve()
+			));
+			name = totalRef.row;
+			
+		}
+
+		res.status(200);
+		res.send(name);
+
+	} catch (e) {
+		handleResponseErrors(e, res);
+	}
 });

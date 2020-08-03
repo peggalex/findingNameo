@@ -13,8 +13,15 @@ class Name:
         self.rank = None
         self.creator = "<default>"
 
+
     def __str__(self):
-        return ",".join((str(x) for x in (self.name, self.isMale, self.rank, self.creator)))
+        return ",".join((str(x) for x in (
+            self.name,
+            self.isMale,
+            self.pop,
+            self.rank,
+            self.creator
+        )))
 
     
 class Aggregate:
@@ -36,6 +43,10 @@ class Aggregate:
 
 class NameAggregate(Aggregate):
 
+    def __init__(self):
+        super().__init__()
+        self.totalPop = 0
+
     def assignPopularity(self):
         
         keysOrdered = sorted(self._dic)
@@ -46,9 +57,10 @@ class NameAggregate(Aggregate):
             key = keysOrdered[index]
             
             for nameObj in self._dic[key]:
-                
+
                 nameObj.rank = rank
 
+                
 writeLine = lambda line, wf: wf.write(line + '\n')
 
 if __name__=='__main__':

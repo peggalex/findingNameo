@@ -5,15 +5,18 @@ npm init
 
 npm install --save express
 npm install --save JSON
-npm install --save ws
-npm install --save url
-npm install --save http
 npm install --save body-parser
+
+npm install --save ws
+
 npm install --save sqlite3
+
 npm install --save react
 npm install --save react-dom
 
-sqlite3 db/database.db < db/schema
+rm db/database.db
+
+sqlite3 db/database.db < db/schema.sql
 sqlite3 <<END_COMMANDS
 .open db/database.db
 .mode csv

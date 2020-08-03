@@ -1,3 +1,9 @@
+:root{
+    --maleColor: var(--blue400);
+    --femaleColor: var(--pink400);
+    --unisexColor: var(--indigo400); 
+}
+
 body *, button, input {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
       'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
@@ -71,10 +77,7 @@ button:hover, input:hover, .clickable:hover {
     position: absolute;
     z-index: -1;
     width: 100vw !important;
-}
-
-#frontPage .leaves #leaves > g > path {
-    transform: scale(0.6);
+    display: none;
 }
 
 #frontPage #logoContainer > svg{
@@ -555,8 +558,12 @@ button:hover, input:hover, .clickable:hover {
     border-radius: 100%;
 }
 
+#ratingsPage .itsARate:hover{
+    background-color: white;
+}
+
 #ratingsPage .gender {
-    width: 1.5rem;
+    width: 1.25rem;
     text-align: center;
     font-size: 0.75rem;
     height: 7rem;
@@ -571,15 +578,15 @@ button:hover, input:hover, .clickable:hover {
 }
 
 #ratingsPage .gender.boy {
-    background-color: var(--blue400);
+    background-color: var(--maleColor);
 }
 
 #ratingsPage .gender.girl {
-    background-color: var(--pink300);
+    background-color: var(--femaleColor);
 }
 
 #ratingsPage .gender.unisex {
-    background-color: var(--indigo400);
+    background-color: var(--unisexColor);
 }
 
 .namePop > div {
@@ -595,10 +602,6 @@ button:hover, input:hover, .clickable:hover {
     font-weight: 600;
     color: var(--gray700);
     text-transform: capitalize;
-}
-
-#ratingsPage .namePop .name.long {
-    font-size: 1rem;
 }
 
 #ratingsPage .namePop .popLabel {
@@ -688,13 +691,274 @@ button:hover, input:hover, .clickable:hover {
     margin: 1rem 0;
 }
 
+/* ============================== */
+/* ===== ratings ===== */
+/* ============================== */
+
+#ratePage {
+    height: 100%;
+}
+
+#ratePage #rateHeader {
+    position: relative;
+}
+
+#ratePage #rateHeader.male {
+    background-color: var(--maleColor);
+}
+
+#ratePage #rateHeader.female {
+    background-color: var(--femaleColor);    
+}
+
+#ratePage #rateHeader.unisex {
+    background-color: var(--unisexColor);
+}
+
+#ratePage #rateName {
+    margin: 3.5rem 0 0 1.5rem;
+    color: white;
+    font-weight: 600;
+    text-transform: capitalize;
+    font-size: 3rem;
+}
+
+#ratePage #rateGender {
+    position: absolute;
+    right: 0;
+    padding: 1rem;
+    background-color: rgba(0,0,0,0.1);
+    border-radius: 0 0 0 1rem;
+}
+
+#ratePage #rateGender > svg > * {
+    stroke: white;
+}
+#ratePage #rateGender * {
+    margin: 0;
+    font-size: 1.25rem;
+}
+#ratePage #rateGender > svg {
+    margin-left: 0.5rem !important;
+    transform: scale(1.25);
+}
+
+#ratePage #rateGender * {
+    margin: 0;
+    font-size: 1.25rem;
+}
+
+#ratePage #rateGender > *:first-child{
+    color: var(--gray100);
+}
+
+#ratePage #rateGenderActual {
+    margin-left: 0.5rem;
+    font-weight: 500;
+    color: var(--gray100);
+    text-transform: capitalize;  
+}
+
+#ratePage #ratePop {
+    margin-left: 1.25rem;
+}
+
+#ratePage #ratePop > svg {
+    width: 1rem;
+}
+
+#ratePage #pop {
+    font-size: 1.25rem;
+}
+
+#ratePage #popLabel {
+    font-weight: 100;
+}
+
+#ratePage #ratePop > * {
+    color: var(--gray100);
+    stroke: var(--gray100);
+    margin: 0 0 0 0.2rem;
+}
+
+#ratePage #popSuffix {
+    margin-top: -0.5rem;
+}
+
+#ratePage #popSuffix:after {
+    margin-left: -0.2rem;
+    font-size: 0.75rem;
+    margin-top: -1rem;
+    font-weight: 100;
+}
+
+#ratePage #popSuffix.st:after{ content: 'st'; }
+#ratePage #popSuffix.nd:after{ content: 'nd'; }
+#ratePage #popSuffix.rd:after{ content: 'rd'; }
+#ratePage #popSuffix.th:after{ content: 'th'; }
+
+#ratePage #rateRatingContainer {
+    margin: -4rem 2rem 1rem 0;
+}
+
+#ratePage #rateRatingContainer *{
+    color: var(--grey700);
+    fill: var(--grey700);
+    stroke: var(--grey700);
+}
+
+#ratePage #rateRating {
+    font-size: 3.5rem;
+    margin: 0;
+    font-weight: 500;
+}
+
+#ratePage .rating {
+    width: 50%;
+}
+
+#ratePage .rating > *:first-child {
+    font-size: 1.25rem;
+    font-weight: 500;
+    margin-top: 0;
+}
+
+
+#ratePage .rating * {
+    color: var(--gray700);
+    stroke: var(--gray600);
+}
+
+#ratePage .rating > div {
+    position: relative;
+}
+#ratePage .editIcon {
+    height: 1.25rem;
+    stroke-width: 0.15rem;
+    position: absolute;
+    left: -1.5rem;
+}
+#ratePage #ratingPartner > *:first-child{
+    color: var(--gray500);
+}
+
+#ratePage #ratingPartner .ratingNumber {
+    color: var(--gray600);
+}
+
+#ratePage .ratingNumber {
+    width: 2em;
+    text-align: center;
+    font-size: 2.5rem;
+    font-weight: 500;
+    margin: 0;
+}
+
+#ratePage input.ratingNumber {
+    background-color: var(--grey200);
+    border: none;
+    outline: none;
+    margin-left: 0.5rem;
+    border-radius: 0.5rem;
+}
+
+#ratePage #newRating {
+    background-color: var(--indigo100);
+}
+
+#ratePage .newRateDesc {
+    color: var(--indigo700);
+    margin: 1.5rem 0 0.5rem 0;
+}
+
+#ratePage #randomButton .diceIcon {
+    height: 1.5rem;
+    margin-right: 0.5rem;
+}
+
+#ratePage #randomButton .diceIcon > path {
+    fill: white;
+}
+
+
+#ratePage #randomButton > *:last-child {
+    border-radius: 0 1.25rem 1.25rem 0;
+    width: 7rem;
+    background-color: white;
+}
+
+#ratePage #randomButton > *:last-child > p {
+    text-align: center;
+    font-size: 1.25rem;
+    color: var(--indigo700);
+    text-transform: capitalize;
+}
+
+#ratePage #randomButton > *:last-child > .chevronIcon > * {
+    stroke: var(--indigo700);
+}
+
+#ratePage #randomButton > *:first-child {
+    border-radius: 1.25rem 0 0 1.25rem;
+    background-color: var(--indigo700);
+    color: white;
+    padding-left: 1rem;
+    font-size: 1.25rem;
+}
+#ratePage #randomButton > * {
+    height: 2.5rem;
+    border: solid var(--indigo700);
+}
+
+#ratePage #randomButton > svg {
+    position: absolute;
+    right: 0.5rem;
+    color: var(--indigo700);
+}
+
+#ratePage #randomButton > svg > * {
+    stroke: var(--indigo700)
+}
+
+#ratePage .searchIcon > * {
+    stroke: var(--indigo700);
+    stroke-width: 0.15rem;
+}
+#ratePage #searchName {
+    height: 2.5rem;
+    width: 15rem;
+    border-radius: 1.25rem;
+    background-color: white;
+    outline: none;
+    border: solid var(--indigo700);
+}
+
+#ratePage #newRating > *:last-child {
+    margin-bottom: 1.5rem;
+}
+
+#ratePage .starIcon {
+    height: 2.25rem;
+}
+
+
 @media only screen and (orientation: portrait) {
 
-    #frontPage .leaves #leaves > g > path {
-        transform: scale(1);
+    #frontPage .leaves { 
+        display: block;
+        width: 110% !important;
     }
 
     #mainPage footer, #mainPage header {
         min-height: 6rem;
     }
+
+    #ratingsPage .namePop .name.long {
+        font-size: 1rem;
+    }
+
+    #ratePage #rateRatingContainer {
+        margin: -2rem 2rem 1rem 0;
+    }
+
 }

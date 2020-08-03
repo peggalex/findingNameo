@@ -1,6 +1,7 @@
 CREATE TABLE name (
 	name VARCHAR(60),
 	isMale INTEGER,
+	pop INTEGER,
 	rank INTEGER,
 	creator VARCHAR(20),
 	nid INTEGER PRIMARY KEY,
@@ -28,7 +29,7 @@ CREATE TABLE partnerRequest(
 	requestee VARCHAR(20),
 	FOREIGN KEY (requestor) REFERENCES user(username),
 	FOREIGN KEY (requestee) REFERENCES user(username)
-)
+);
 
 CREATE TABLE partners (
 	partner1 VARCHAR(20),
