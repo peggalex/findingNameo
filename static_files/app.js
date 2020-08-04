@@ -76,7 +76,10 @@ function getNumberSuffix(number){
     }
 }
 
-const avg = (x1, x2) => ((parseFloat(x1)+parseFloat(x2))/2).toFixed(1);
+const avg = (x1, x2) => {
+    let x = ((parseFloat(x1)+parseFloat(x2))/2).toFixed(1);
+    return isNaN(x) ? "?" : x;
+};
 
 class UserObject {
     static instance = new UserObject(); // singleton
@@ -358,8 +361,8 @@ function Rating({dispatch, nameObj}){
             {StarIcon}
             <p className='rating'>{avg(myRating, partnerRating)}</p>
             <div className='partnerRatings'>
-                <PersonRating rating={myRating.toFixed(1)} isYou={true}/>
-                <PersonRating rating={partnerRating.toFixed(1)} isYou={false}/>
+                <PersonRating rating={myRating==null ? '?' : myRating.toFixed(1)} isYou={true}/>
+                <PersonRating rating={partnerRating==null ? '?' : partnerRating.toFixed(1)} isYou={false}/>
             </div>
         </div>
     );
@@ -513,8 +516,8 @@ function RatingsPage({dispatch}){
                     </div> : null
                 }
                 {ratings.map((nameObj)=>{
-                    nameObj.myRating = (Math.round(Math.random()*20))/2;
-                    nameObj.partnerRating = (Math.round(Math.random()*20))/2;
+                    //nameObj.myRating = (Math.round(Math.random()*20))/2;
+                    //nameObj.partnerRating = (Math.round(Math.random()*20))/2;
                     return <Rating key={JSON.stringify(nameObj)} dispatch={dispatch} nameObj={nameObj}/>
                 })}
                 {isMore ? showMoreButton : ''}
@@ -530,8 +533,8 @@ function RatePage({nameObj, gender = 'any'}){
 
     let setRandomRate = (gender) => {
         Rate.getRandomRate(gender).then((rate) => {
-            rate.myRating = parseInt(Math.random()*20)/2;
-            rate.partnerRating = parseInt(Math.random()*20)/2;
+            //rate.myRating = parseInt(Math.random()*20)/2;
+            //rate.partnerRating = parseInt(Math.random()*20)/2;
             setRateObj(rate);
         });
     }
@@ -574,12 +577,12 @@ function RatePage({nameObj, gender = 'any'}){
                         <p>Your Rating</p>
                         <div className="row centerCross">
                             {EditIcon}
-                            <input className='ratingNumber' value={myRating.toFixed(1)}/>
+                            <input className='ratingNumber' placeholder="?" value={myRating != null ? myRating.toFixed(1) : ''}/>
                         </div>
                     </div>
                     <div id='ratingPartner' className='rating col centerCross'>
                         <p>Partner Rating</p>
-                        <p className='ratingNumber'>{partnerRating.toFixed(1)}</p>
+                        <p className='ratingNumber'>{partnerRating != null ? partnerRating.toFixed(1) : '?'}</p>
                     </div>
                     <div className='spacer'></div>
                 </div>

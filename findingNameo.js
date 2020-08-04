@@ -446,7 +446,7 @@ friendsOnlineWebSocket.on('connection', async function(ws, req) {
 // ================================================================================
 // ================================================================================
 
-getPartner = async (username) => (queryGet(
+getPartner = async (username) => (await queryGet(
 	`SELECT partner1 AS partner
 	FROM partners
 	WHERE partner2 =?
@@ -707,26 +707,26 @@ async function getRating(req,res){
 		whereQuery = whereQuery ? `${whereQuery} AND ${regex}` : regex; 
 	}
 
-	let partner = null;
+	let partner;
 	try {
-		partner = await getPartner();
-		console.log('partner', partner);
+		partner = await getPartner(username);
+		console.log('partner:', partner);
 	} catch (e) {
 		if (!(e instanceof NotFoundError)) throw e;
 	}
 
-	let queryStr = (partner!=null) ? `
+	let queryStr = (partner!==undefined) ? `
 
 		SELECT name, isMale, pop, rank, creator, name.nid AS nid,
 		r1.rating AS myRating, r2.rating AS partnerRating
 		FROM name
 		LEFT JOIN rating r1
-		ON name.nid = r1.nid
+			ON name.nid = r1.nid
+			AND r1.username = '${username}'
 		LEFT JOIN rating r2
-		ON name.nid = r2.nid
-		WHERE r1.username = '${username}'
-		AND r2.username = '${partner}'
-		AND creator IN ('<default>', '${username}', '${partner}')
+			ON name.nid = r2.nid
+			AND r2.username = '${partner}'
+		WHERE creator IN ('<default>', '${username}', '${partner}')
 		${whereQuery!=null ? 'AND ' + whereQuery : ''}
 		${orderByQuery!=null ? 'ORDER BY ' + orderByQuery : ''}
 		LIMIT ${parseInt(range)+1}
@@ -738,13 +738,17 @@ async function getRating(req,res){
 		rating.rating AS myRating, NULL as partnerRating
 		FROM name
 		LEFT JOIN rating
-		ON name.nid = rating.nid
-		WHERE rating.username = '${username}'
-		AND creator IN ('<default>', '${username}')
+			ON name.nid = rating.nid
+			AND rating.username = '${username}'
+		WHERE creator IN ('<default>', '${username}')
 		${whereQuery!=null ? 'AND ' + whereQuery : ''}
 		${orderByQuery!=null ? 'ORDER BY ' + orderByQuery : ''}
 		LIMIT ${parseInt(range)+1}
-		OFFSET ${rangeStart}`;
+		OFFSET ${rangeStart}
+		
+	`;
+
+	console.log('queryStr:', queryStr);
 
 	try {
 		await authenticate(username, password);
