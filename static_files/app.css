@@ -721,6 +721,7 @@ button:hover, input:hover, .clickable:hover {
     font-weight: 600;
     text-transform: capitalize;
     font-size: 3rem;
+    height: 4rem;
 }
 
 #ratePage #rateGender {
@@ -761,6 +762,7 @@ button:hover, input:hover, .clickable:hover {
 
 #ratePage #ratePop {
     margin-left: 1.25rem;
+    margin-bottom: 0.5rem;
 }
 
 #ratePage #ratePop > svg {
@@ -798,7 +800,10 @@ button:hover, input:hover, .clickable:hover {
 #ratePage #popSuffix.th:after{ content: 'th'; }
 
 #ratePage #rateRatingContainer {
-    margin: -4rem 2rem 1rem 0;
+    /*margin: -4rem 2rem 1rem 0;*/
+    position: absolute;
+    right: 2rem;
+    bottom: 1rem;
 }
 
 #ratePage #rateRatingContainer *{
@@ -815,12 +820,14 @@ button:hover, input:hover, .clickable:hover {
 
 #ratePage .rating {
     width: 50%;
+    margin: 0.5rem 0;
 }
 
 #ratePage .rating > *:first-child {
     font-size: 1.25rem;
     font-weight: 500;
     margin-top: 0;
+    margin-bottom: 0.5rem;
 }
 
 
@@ -868,7 +875,7 @@ button:hover, input:hover, .clickable:hover {
 
 #ratePage .newRateDesc {
     color: var(--indigo700);
-    margin: 1.5rem 0 0.5rem 0;
+    margin: 0.5rem 0 0.5rem 0;
 }
 
 #ratePage #randomButton .diceIcon {
@@ -934,7 +941,7 @@ button:hover, input:hover, .clickable:hover {
 }
 
 #ratePage #newRating > *:last-child {
-    margin-bottom: 1.5rem;
+    margin-bottom: 0.5rem;
 }
 
 #ratePage .starIcon {
@@ -958,7 +965,11 @@ button:hover, input:hover, .clickable:hover {
     }
 
     #ratePage #rateRatingContainer {
-        margin: -2rem 2rem 1rem 0;
+        /*margin: -2rem 2rem 1rem 0;*/
+    }
+
+    #ratePage #rateName.long {
+        font-size: 2rem;
     }
 
 }

@@ -446,7 +446,7 @@ friendsOnlineWebSocket.on('connection', async function(ws, req) {
 // ================================================================================
 // ================================================================================
 
-getPartner = (username) => queryGet(
+getPartner = async (username) => (queryGet(
 	`SELECT partner1 AS partner
 	FROM partners
 	WHERE partner2 =?
@@ -457,7 +457,7 @@ getPartner = (username) => queryGet(
 	FROM partners 
 	WHERE partner1 =?`,
 	[username, username]
-);
+)).partner;
 
 async function sendPartnerRequest(requestor, requestee){
 
@@ -545,13 +545,14 @@ async function createOrUpdateRating(username, name, isMale, rating){
 		WHERE username = ? AND nid = ?`,
 		[username, nid]
 	);
+	console.log('rating exists', ratingExists);
 	let timeStr = new Date().toISOString();
 	if (ratingExists){
 		await queryRun(
 			`UPDATE rating
 			SET rating = ?, timestamp = ?
 			WHERE username = ? AND nid = ?`,
-			[rating, timestamp, username, nid]
+			[rating, timeStr, username, nid]
 		);
 	} else {
 		await queryRun(
@@ -669,8 +670,8 @@ async function getRating(req,res){
 		subFilter = req.params.sf, search = req.params.s,
 		range = req.params.r, rangeStart = req.params.rs;
 
-	let whereQuery = '',
-		orderByQuery = '';
+	let whereQuery = null,
+		orderByQuery = null;
 
 	switch(`${filter} ${subFilter}`){
 		case ("popularity asc"):
@@ -690,11 +691,11 @@ async function getRating(req,res){
 			orderByQuery = 'rank'; break;
 
 		case ("gender female"):
-			whereQuery += 'isMale = 0';
+			whereQuery = 'isMale = 0';
 			orderByQuery = 'rank'; break;
 
 		case ("gender unisex"):
-			whereQuery += 'isMale = -1';
+			whereQuery = 'isMale = -1';
 			orderByQuery = 'rank'; break;
 
 		default:
@@ -706,6 +707,45 @@ async function getRating(req,res){
 		whereQuery = whereQuery ? `${whereQuery} AND ${regex}` : regex; 
 	}
 
+	let partner = null;
+	try {
+		partner = await getPartner();
+		console.log('partner', partner);
+	} catch (e) {
+		if (!(e instanceof NotFoundError)) throw e;
+	}
+
+	let queryStr = (partner!=null) ? `
+
+		SELECT name, isMale, pop, rank, creator, name.nid AS nid,
+		r1.rating AS myRating, r2.rating AS partnerRating
+		FROM name
+		LEFT JOIN rating r1
+		ON name.nid = r1.nid
+		LEFT JOIN rating r2
+		ON name.nid = r2.nid
+		WHERE r1.username = '${username}'
+		AND r2.username = '${partner}'
+		AND creator IN ('<default>', '${username}', '${partner}')
+		${whereQuery!=null ? 'AND ' + whereQuery : ''}
+		${orderByQuery!=null ? 'ORDER BY ' + orderByQuery : ''}
+		LIMIT ${parseInt(range)+1}
+		OFFSET ${rangeStart}
+		
+		` : `
+
+		SELECT name, isMale, pop, rank, creator, name.nid AS nid, 
+		rating.rating AS myRating, NULL as partnerRating
+		FROM name
+		LEFT JOIN rating
+		ON name.nid = rating.nid
+		WHERE rating.username = '${username}'
+		AND creator IN ('<default>', '${username}')
+		${whereQuery!=null ? 'AND ' + whereQuery : ''}
+		${orderByQuery!=null ? 'ORDER BY ' + orderByQuery : ''}
+		LIMIT ${parseInt(range)+1}
+		OFFSET ${rangeStart}`;
+
 	try {
 		await authenticate(username, password);
 
@@ -714,15 +754,7 @@ async function getRating(req,res){
 				throw new InputError(`${param} should be alpha numeric.`)
 			}
 		}
-		let ratings = await queryAll(
-			`SELECT name, isMale, pop, rank, creator, nid
-			FROM name
-			${whereQuery!='' ? 'WHERE ' + whereQuery : ''}
-			${orderByQuery!='' ? 'ORDER BY ' + orderByQuery : ''}
-			LIMIT ?
-			OFFSET ?`,
-			[parseInt(range)+1, rangeStart]
-		);
+		let ratings = await queryAll(queryStr, []);
 
 		res.status(200);
 		res.send({ratings: ratings.slice(0, range), isMore: ratings.length==parseInt(range)+1});

@@ -115,7 +115,7 @@ function FrontPage({setPage}){
     return <div id='frontPage' className='col'>
         <div id='logoContainer' className="row centerAll centerCross">
             {Logo}
-            {Leaves}
+            {/*Leaves*/}
         </div>
         <div id='bottomHalf'>
             <div id='heading' className={(isMobile() ? 'col' : 'row') + ' center'}>
@@ -492,17 +492,19 @@ function RatingsPage({dispatch}){
 
     return (
         <div id='ratingsPage'>
-            <div id='filter' className='row centerCross'>
-                <div id='filterButton' className={'clickable' + (showSettings ? 'selected' : '')} onClick={()=>setShowSettings(!showSettings)}>
-                    {FilterIcon}
+            <div>
+                <div id='filter' className='row centerCross'>
+                    <div id='filterButton' className={'clickable' + (showSettings ? 'selected' : '')} onClick={()=>setShowSettings(!showSettings)}>
+                        {FilterIcon}
+                    </div>
+                    <div id='filterPill' className='row centerCross'>
+                        <p id='filterPillName' className='centerAll'>{filter}</p>
+                        {GetRatingFilterIcon(subFilter)}
+                    </div>
+                    <div className='spacer'></div>
+                    <input ref={searchRef} onChange={()=>getRatingsSetIsMore(filter, subFilter, ResultsAtATime, 0).then(setRatings)}></input>
+                    {SearchIcon}
                 </div>
-                <div id='filterPill' className='row centerCross'>
-                    <p id='filterPillName' className='centerAll'>{filter}</p>
-                    {GetRatingFilterIcon(subFilter)}
-                </div>
-                <div className='spacer'></div>
-                <input ref={searchRef} onChange={()=>getRatingsSetIsMore(filter, subFilter, ResultsAtATime, 0).then(setRatings)}></input>
-                {SearchIcon}
             </div>
             <div id='ratingsTableContainer' className='col'>
                 {showSettings ? 
@@ -546,8 +548,8 @@ function RatePage({nameObj, gender = 'any'}){
 
     return (
         <div id='ratePage' className="col">
-            <div id='rateHeader' className={`col ${_genderStr}`}>
-                <p id='rateName'>{name}</p>
+            <div id='rateHeader' className={`spacer col ${_genderStr}`}>
+                <p id='rateName' className={(name.length > 7 ? 'long':'')}>{name}</p>
                 <div id='rateGender' className='row centerCross'>
                     <p>Gender: </p>
                     <p id='rateGenderActual'>{_genderStr}</p>
@@ -559,43 +561,50 @@ function RatePage({nameObj, gender = 'any'}){
                     <p id='pop'>{rank}</p>
                     <p id='popSuffix' className={getNumberSuffix(rank)}></p>
                 </div>
+                <div className='spacer'></div>
                 <div id='rateRatingContainer' className='row centerCross'>
-                    <div className='spacer'></div>
                     {StarIcon}
                     <p id='rateRating'>{rating}</p>
                 </div>
             </div>
-            <div className='row spacer centerCross'>
-                <div className='rating col centerCross'>
-                    <p>Your Rating</p>
-                    <div className="row centerCross">
-                        {EditIcon}
-                        <input className='ratingNumber' value={myRating.toFixed(1)}/>
+            <section className={`${isMobile() ? 'col' : 'row'} spacer`}>
+                <div className='row centerCross spacer'>
+                    <div className='spacer'></div>
+                    <div className='rating col centerCross'>
+                        <p>Your Rating</p>
+                        <div className="row centerCross">
+                            {EditIcon}
+                            <input className='ratingNumber' value={myRating.toFixed(1)}/>
+                        </div>
                     </div>
+                    <div id='ratingPartner' className='rating col centerCross'>
+                        <p>Partner Rating</p>
+                        <p className='ratingNumber'>{partnerRating.toFixed(1)}</p>
+                    </div>
+                    <div className='spacer'></div>
                 </div>
-                <div id='ratingPartner' className='rating col centerCross'>
-                    <p>Partner Rating</p>
-                    <p className='ratingNumber'>{partnerRating.toFixed(1)}</p>
+                <div id='newRating' className='col centerCross spacer'>
+                    <div className='spacer'></div>
+                    <p className='newRateDesc'>Rate a random name you haven't rated yet</p>
+                    <div id='randomButton' className="row centerCross">
+                        <button 
+                            id='randomName' 
+                            className='newRate row centerCross' 
+                            onClick={()=>{
+                                setRandomRate(gender);
+                            }}
+                            type='button'
+                        >{DiceIcon}Random Name</button>
+                        <button className="row centerCross">
+                            <p className='spacer'>{randomGender}</p> 
+                            {ChevronIcon}</button>
+                    </div>
+                    <div className='spacer'></div>
+                    <p className='newRateDesc'>Search for an existing name, or add a new one</p>
+                    <button id='searchName' className='newRate'>{SearchIcon}</button>
+                    <div className='spacer'></div>
                 </div>
-            </div>
-            <div id='newRating' className='col centerCross'>
-                <p className='newRateDesc'>Rate a random name you haven't rated yet</p>
-                <div id='randomButton' className="row centerCross">
-                    <button 
-                        id='randomName' 
-                        className='newRate row centerCross' 
-                        onClick={()=>{
-                            setRandomRate(gender);
-                        }}
-                        type='button'
-                    >{DiceIcon}Random Name</button>
-                    <button className="row centerCross">
-                        <p className='spacer'>{randomGender}</p> 
-                        {ChevronIcon}</button>
-                </div>
-                <p className='newRateDesc'>Search for an existing name, or add a new one</p>
-                <button id='searchName' className='newRate'>{SearchIcon}</button>
-            </div>
+            </section>
         </div>
     );
 }
