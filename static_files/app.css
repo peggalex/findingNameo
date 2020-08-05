@@ -723,6 +723,9 @@ button:hover, input:hover, .clickable:hover {
     text-transform: capitalize;
     font-size: 3rem;
     height: 4rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
 }
 
 #ratePage #rateGender {

@@ -321,12 +321,16 @@ class Rate {
 
     static async getRandomRate(gender){
         // gender in {any, male, female, unisex}
-        return new Rate(await waitForAjaxCall('get', `
+        let rate = new Rate(await waitForAjaxCall('get', `
             randomName/${UserObject.getUsername()}
             /password/${UserObject.getPassword()}
             /gender/${gender}
         `));
-
+        if (rate.nid == null) {
+            alert(`No ${gender} ratings created (yet).`);
+            return null;
+        }
+        return rate;
     }
 }
 
@@ -527,21 +531,22 @@ function RatingsPage({dispatch}){
     )
 }
 
-function RatePage({nameObj, gender = 'any'}){
+function RatePage({nameObj}){
 
     let [rateObj, setRateObj] = React.useState(nameObj);
-    let [randomGender, setRandomGender] = React.useState('any');
-
-    let setRandomRate = (gender) => {
-        Rate.getRandomRate(gender).then((rate) => {
+    let randomGenders = ['any', 'male', 'female', 'unisex'];
+    let [randomGenderIndex, setRandomGenderIndex] = React.useState(0);
+    let setRandomRate = () => {
+        Rate.getRandomRate(randomGenders[randomGenderIndex]).then((rate) => {
             //rate.myRating = parseInt(Math.random()*20)/2;
             //rate.partnerRating = parseInt(Math.random()*20)/2;
+            if (rate == null) return;
             setRateObj(rate);
         });
     }
 
     React.useEffect(()=>{
-        if (nameObj == null) setRandomRate(gender);
+        if (nameObj == null) setRandomRate('any');
     }, []);
 
     if (rateObj == null) return null;
@@ -594,14 +599,15 @@ function RatePage({nameObj, gender = 'any'}){
                         <button 
                             id='randomName' 
                             className='newRate row centerCross' 
-                            onClick={()=>{
-                                setRandomRate(gender);
-                            }}
+                            onClick={setRandomRate}
                             type='button'
                         >{DiceIcon}Random Name</button>
-                        <button className="row centerCross">
-                            <p className='spacer'>{randomGender}</p> 
-                            {ChevronIcon}</button>
+                        <button className="row centerCross" onClick={
+                            ()=>setRandomGenderIndex((randomGenderIndex+1)%randomGenders.length)
+                        }>
+                            <p className='spacer'>{randomGenders[randomGenderIndex]}</p> 
+                            {ChevronIcon}
+                        </button>
                     </div>
                     <div className='spacer'></div>
                     <p className='newRateDesc'>Search for an existing name, or add a new one</p>

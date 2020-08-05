@@ -817,7 +817,7 @@ app.get('/randomName/:u/password/:p/gender/:g', async (req, res)=>{
 				AND r1.username = '${username}'
 		`;
 
-		whereQueries = [`r1.nid IS NULL`];
+		whereQueries = [];
 
 		if (partner !== undefined){
 			selectQueries.push('r2.rating AS partnerRating');
@@ -846,12 +846,32 @@ app.get('/randomName/:u/password/:p/gender/:g', async (req, res)=>{
 				throw new InputError(`gender "${gender}" not in {male, female, unisex, any}`);
 		}
 
-		let name; 
+		let partnerRatingsExist = await queryExists(createQueryStr(
+			['*'],
+			`FROM name
+			JOIN rating
+				ON name.nid = rating.nid`,
+			[`username = '${partner}'`, ...whereQueries],
+			'',
+			'LIMIT 1'
+		));
 
-		let isCreatedName = (partner !== undefined && Math.round(Math.random()));
+		if (!partnerRatingsExist && gender == 'unisex'){
+			res.status(200);
+			res.send({nid: null});
+			return;
+		}
+		console.log('partner', partnerRatingsExist, partner);
+		let isCreatedName = (
+			partner !== undefined && 
+			partnerRatingsExist && 
+			(Math.round(Math.random()) || gender == 'unisex')
+		);
 
+		whereQueries.push(`r1.nid IS NULL`);
 		whereQueries.push(`creator = '${isCreatedName ? partner : "<default>"}' `);
 
+		let name; 
 		if (isCreatedName){
 			let { total } = await queryGet(createQueryStr(
 				['COUNT(*) AS total'],
