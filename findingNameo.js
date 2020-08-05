@@ -663,92 +663,20 @@ app.put('/register/:u/nickname/:n/password/:p', async function(req, res) {
 	}
 });
 
+createQueryStr = (selectQueries, fromQuery, whereQueries, orderByQuery, limitQuery) => `
+	SELECT ${selectQueries.join(', ')}
+	${fromQuery}
+	${whereQueries.length > 0 ? "WHERE " + whereQueries.join(" AND ") : "" }
+	${orderByQuery}
+	${limitQuery}
+`.replace(/\t/g, '').replace(/\n\n/g, '\n');
+
 async function getRating(req,res){
 
 	let username = req.params.u, 
 		password = req.params.p, filter = req.params.f,
 		subFilter = req.params.sf, search = req.params.s,
 		range = req.params.r, rangeStart = req.params.rs;
-
-	let whereQuery = null,
-		orderByQuery = null;
-
-	switch(`${filter} ${subFilter}`){
-		case ("popularity asc"):
-			orderByQuery = 'rank'; break;
-
-		case ("popularity desc"):
-			orderByQuery = 'rank DESC'; break;
-		
-		case ("name asc"):
-			orderByQuery = 'name'; break;
-
-		case ("name desc"):
-			orderByQuery = 'name DESC'; break;
-
-		case ("gender male"):
-			whereQuery = 'isMale = 1';
-			orderByQuery = 'rank'; break;
-
-		case ("gender female"):
-			whereQuery = 'isMale = 0';
-			orderByQuery = 'rank'; break;
-
-		case ("gender unisex"):
-			whereQuery = 'isMale = -1';
-			orderByQuery = 'rank'; break;
-
-		default:
-			throw new Error('bad order by.');
-	}
-
-	if (search) {
-		let regex = `name LIKE '${search}%'`
-		whereQuery = whereQuery ? `${whereQuery} AND ${regex}` : regex; 
-	}
-
-	let partner;
-	try {
-		partner = await getPartner(username);
-		console.log('partner:', partner);
-	} catch (e) {
-		if (!(e instanceof NotFoundError)) throw e;
-	}
-
-	let queryStr = (partner!==undefined) ? `
-
-		SELECT name, isMale, pop, rank, creator, name.nid AS nid,
-		r1.rating AS myRating, r2.rating AS partnerRating
-		FROM name
-		LEFT JOIN rating r1
-			ON name.nid = r1.nid
-			AND r1.username = '${username}'
-		LEFT JOIN rating r2
-			ON name.nid = r2.nid
-			AND r2.username = '${partner}'
-		WHERE creator IN ('<default>', '${username}', '${partner}')
-		${whereQuery!=null ? 'AND ' + whereQuery : ''}
-		${orderByQuery!=null ? 'ORDER BY ' + orderByQuery : ''}
-		LIMIT ${parseInt(range)+1}
-		OFFSET ${rangeStart}
-		
-		` : `
-
-		SELECT name, isMale, pop, rank, creator, name.nid AS nid, 
-		rating.rating AS myRating, NULL as partnerRating
-		FROM name
-		LEFT JOIN rating
-			ON name.nid = rating.nid
-			AND rating.username = '${username}'
-		WHERE creator IN ('<default>', '${username}')
-		${whereQuery!=null ? 'AND ' + whereQuery : ''}
-		${orderByQuery!=null ? 'ORDER BY ' + orderByQuery : ''}
-		LIMIT ${parseInt(range)+1}
-		OFFSET ${rangeStart}
-		
-	`;
-
-	console.log('queryStr:', queryStr);
 
 	try {
 		await authenticate(username, password);
@@ -758,7 +686,95 @@ async function getRating(req,res){
 				throw new InputError(`${param} should be alpha numeric.`)
 			}
 		}
-		let ratings = await queryAll(queryStr, []);
+
+		let partner;
+		try {
+			partner = await getPartner(username);
+		} catch (e) {
+			if (!(e instanceof NotFoundError)) throw e;
+		}
+	
+		let selectQueries = [
+			'name', 'isMale',
+			'pop', 'rank', 
+			'creator', 'name.nid AS nid',
+			'r1.rating AS myRating',
+			(partner!==undefined ? 'r2.rating' : 'NULL') + ' AS partnerRating'
+		];
+
+		let fromQuery = `
+			FROM name
+			LEFT JOIN rating r1
+				ON name.nid = r1.nid
+				AND r1.username = '${username}'
+		`
+		let whereQueries = [];
+		if (search!==undefined && search!='') whereQueries.push(`name LIKE '${search}%'`);
+
+		let orderByQuery = '';
+		let limitQuery = `LIMIT ${parseInt(range)+1} OFFSET ${rangeStart}`;
+
+		switch(`${filter} ${subFilter}`){
+			case ("popularity asc"):
+				orderByQuery = 'ORDER BY rank NULLS LAST';
+				break;
+			case ("popularity desc"):
+				orderByQuery = 'ORDER BY rank DESC'; 
+				break;
+			case ("name asc"):
+				orderByQuery = 'ORDER BY name'; 
+				break;
+			case ("name desc"):
+				orderByQuery = 'ORDER BY name DESC'; 
+				break;
+			case ("gender male"):
+				whereQueries.push('isMale = 1');
+				orderByQuery = 'ORDER BY rank'; 
+				break;
+			case ("gender female"):
+				whereQueries.push('isMale = 0');
+				orderByQuery = 'ORDER BY rank'; 
+				break;
+			case ("gender unisex"):
+				whereQueries.push('isMale = -1');
+				orderByQuery = 'ORDER BY rank'; 
+				break;
+			default:
+				throw new Error('bad order by.');
+		}
+
+		creators = ["<default>", username];
+
+		if (partner!==undefined){
+
+			creators.push(partner);
+
+			fromQuery += `
+				LEFT JOIN rating r2
+					ON name.nid = r2.nid
+					AND r2.username = '${partner}'
+			`;
+		}
+
+		whereQueries.push(
+			`creator IN (${creators.map((s)=>`'${s}'`).join(', ')})`
+		);
+
+		console.log('queryStr:', createQueryStr(
+			selectQueries,
+			fromQuery,
+			whereQueries,
+			orderByQuery,
+			limitQuery
+		));
+
+		let ratings = await queryAll(createQueryStr(
+			selectQueries,
+			fromQuery,
+			whereQueries,
+			orderByQuery,
+			limitQuery
+		), []);
 
 		res.status(200);
 		res.send({ratings: ratings.slice(0, range), isMore: ratings.length==parseInt(range)+1});
@@ -771,6 +787,7 @@ async function getRating(req,res){
 app.get('/ratings/:u/password/:p/filter/:f/subFilter/:sf/range/:r/rangeStart/:rs/search/:s', getRating);
 app.get('/ratings/:u/password/:p/filter/:f/subFilter/:sf/range/:r/rangeStart/:rs/search/', getRating);
 
+
 app.get('/randomName/:u/password/:p/gender/:g', async (req, res)=>{
 	let username = req.params.u,
 		password = req.params.p,
@@ -779,64 +796,101 @@ app.get('/randomName/:u/password/:p/gender/:g', async (req, res)=>{
 	try {
 		await authenticate(username, password);
 
-		let genderWhere = 'WHERE isMale=';
-
-		switch (gender){
-			case 'male':
-				genderWhere += '1';
-				break;
-
-			case 'female':
-				genderWhere += '0';
-				break;
-			
-			case 'unisex':
-				genderWhere += '-1';
-				break;
-			
-			case 'any':
-				genderWhere = '';
-				break;
-
-			default:
-				throw new InputError(`gender "${gender}" not in {male, female, unisex, any}`);
-		}
-
-		let totalSquared = parseInt((await queryGet(`
-			SELECT sum(pop*pop) as totalSquared
-			FROM name
-			${genderWhere}
-		`, [])).totalSquared);
-
-		let partner = null;
+		let partner;
 		try {
 			partner = await getPartner(username);
 		} catch (e) {
 			if (!(e instanceof NotFoundError)) throw e;
 		}
 
-		let defaultOrCreated = Math.round(Math.random());
+		selectQueries =  [
+			'name', 'isMale', 
+			'pop', 'rank', 
+			'creator', 'name.nid', 
+			'NULL AS myRating'
+		];
+
+		fromQuery = `
+			FROM name
+			LEFT JOIN rating r1
+				ON name.nid = r1.nid
+				AND r1.username = '${username}'
+		`;
+
+		whereQueries = [`r1.nid IS NULL`];
+
+		if (partner !== undefined){
+			selectQueries.push('r2.rating AS partnerRating');
+			fromQuery += `
+				LEFT JOIN rating r2
+					ON name.nid = r2.nid
+					AND r2.username = '${partner}'
+			`;
+		} else {
+			selectQueries.push('NULL AS partnerRating');
+		}
+
+		switch (gender){
+			case 'male':
+				whereQueries.push('isMale = 1');
+				break;
+			case 'female':
+				whereQueries.push('isMale = 0');
+				break;
+			case 'unisex':
+				whereQueries.push('isMale = -1');
+				break;
+			case 'any':
+				break;
+			default:
+				throw new InputError(`gender "${gender}" not in {male, female, unisex, any}`);
+		}
 
 		let name; 
 
-		if (partner != null && (defaultOrCreated || gender=='unisex')) {
+		let isCreatedName = (partner !== undefined && Math.round(Math.random()));
 
-			throw new Error('what the snalex');
-			let offset = Math.floor(Math.random()*parseInt(unratedCreatedNames));
+		whereQueries.push(`creator = '${isCreatedName ? partner : "<default>"}' `);
 
+		if (isCreatedName){
+			let { total } = await queryGet(createQueryStr(
+				['COUNT(*) AS total'],
+				fromQuery,
+				whereQueries,
+				'',
+				''
+			), []);
+
+			let target = Math.floor(Math.random()*total);
+			name = await queryGet(createQueryStr(
+				selectQueries,
+				fromQuery,
+				whereQueries,
+				'',
+				'LIMIT 1 OFFSET ' + target
+			), []);
 
 		} else {
+			let { totalSquared } = await queryGet(createQueryStr(
+				['SUM(pop*pop) AS totalSquared'],
+				fromQuery,
+				whereQueries,
+				'',
+				''
+			), []);
 
 			let target = Math.floor(Math.random()*(totalSquared+1));
 			let totalRef = { runningTotal: 0, row: null }
-			await new Promise(async (resolve, reject) => db.each(`
-					SELECT name, isMale, pop, rank, creator, nid
-					FROM name
-					${genderWhere}
-					ORDER BY pop
-				`, 
-				[], 
-				(err, row) => {
+
+			let eachStr = createQueryStr(
+				selectQueries,
+				fromQuery,
+				whereQueries,
+				'ORDER BY pop',
+				''
+			);
+
+			await new Promise(async (resolve, reject) => db.each(eachStr, [], (err, row) => {
 					if (err) reject(new DatabaseError(err));
 					if (totalRef.row) return;
 					let popSquared = parseInt(row.pop)**2;
@@ -852,7 +906,6 @@ app.get('/randomName/:u/password/:p/gender/:g', async (req, res)=>{
 				() => resolve()
 			));
 			name = totalRef.row;
-			
 		}
 
 		res.status(200);

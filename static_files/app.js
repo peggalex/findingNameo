@@ -351,11 +351,12 @@ function Rating({dispatch, nameObj}){
             <div className='genderPlaceholder'></div>
             <div className='namePop'>
                 <p className={'name '+(name.length > 7 ? 'long':'')}>{name}</p>
+                { rank ? 
                 <div className='row'>
                     <p className='popLabel'>popularity</p>
                     <p className='pop'>{rank}</p>
                     <p className={popSuffix + ' popSuffix'}></p>
-                </div>
+                </div> : <p>+ new name</p> }
             </div>
             <div className='spacer'></div>
             {StarIcon}
@@ -558,12 +559,12 @@ function RatePage({nameObj, gender = 'any'}){
                     <p id='rateGenderActual'>{_genderStr}</p>
                     {ChevronIcon}
                 </div>
-                <div id='ratePop' className='row centerCross'>
+                { (rank) ? <div id='ratePop' className='row centerCross'>
                     {PopIcon}
                     <p id='popLabel'>popularity</p>
                     <p id='pop'>{rank}</p>
                     <p id='popSuffix' className={getNumberSuffix(rank)}></p>
-                </div>
+                </div> : <div id='ratePop'><p>+ new name</p></div>}
                 <div className='spacer'></div>
                 <div id='rateRatingContainer' className='row centerCross'>
                     {StarIcon}
