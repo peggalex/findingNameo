@@ -695,70 +695,72 @@ async function getRating(req,res){
 		}
 	
 		let selectQueries = [
-			'name', 'isMale',
-			'pop', 'rank', 
-			'creator', 'name.nid AS nid',
-			'r1.rating AS myRating',
-			(partner!==undefined ? 'r2.rating' : 'NULL') + ' AS partnerRating'
+			'n1.name AS name', 'n1.isMale AS isMale',
+			'n1.pop AS pop', 'n1.rank AS rank', 
+			'n1.rating AS myRating',
+			(partner!==undefined ? 'n2.rating' : 'NULL') + ' AS partnerRating'
 		];
 
 		let fromQuery = `
-			FROM name
-			LEFT JOIN rating r1
-				ON name.nid = r1.nid
-				AND r1.username = '${username}'
+			FROM (
+				SELECT *
+				FROM name
+				LEFT JOIN rating
+					ON name.nid = rating.nid
+					AND rating.username = '${username}'
+				WHERE creator IN ('<default>', '${username}')
+			) n1
 		`
 		let whereQueries = [];
-		if (search!==undefined && search!='') whereQueries.push(`name LIKE '${search}%'`);
+		if (search!==undefined && search!='') whereQueries.push(`n1.name LIKE '${search}%'`);
 
 		let orderByQuery = '';
 		let limitQuery = `LIMIT ${parseInt(range)+1} OFFSET ${rangeStart}`;
 
 		switch(`${filter} ${subFilter}`){
 			case ("popularity asc"):
-				orderByQuery = 'ORDER BY rank NULLS LAST';
+				orderByQuery = 'ORDER BY n1.rank NULLS LAST';
 				break;
 			case ("popularity desc"):
-				orderByQuery = 'ORDER BY rank DESC'; 
+				orderByQuery = 'ORDER BY n1.rank DESC'; 
 				break;
 			case ("name asc"):
-				orderByQuery = 'ORDER BY name'; 
+				orderByQuery = 'ORDER BY n1.name'; 
 				break;
 			case ("name desc"):
-				orderByQuery = 'ORDER BY name DESC'; 
+				orderByQuery = 'ORDER BY n1.name DESC'; 
 				break;
 			case ("gender male"):
-				whereQueries.push('isMale = 1');
-				orderByQuery = 'ORDER BY rank'; 
+				whereQueries.push('n1.isMale = 1');
+				orderByQuery = 'ORDER BY .n1rank'; 
 				break;
 			case ("gender female"):
-				whereQueries.push('isMale = 0');
-				orderByQuery = 'ORDER BY rank'; 
+				whereQueries.push('n1.isMale = 0');
+				orderByQuery = 'ORDER BY n1.rank'; 
 				break;
 			case ("gender unisex"):
-				whereQueries.push('isMale = -1');
-				orderByQuery = 'ORDER BY rank'; 
+				whereQueries.push('n1.isMale = -1');
+				orderByQuery = 'ORDER BY n1.rank'; 
 				break;
 			default:
 				throw new Error('bad order by.');
 		}
 
-		creators = ["<default>", username];
-
 		if (partner!==undefined){
 
-			creators.push(partner);
-
 			fromQuery += `
-				LEFT JOIN rating r2
-					ON name.nid = r2.nid
-					AND r2.username = '${partner}'
+				 JOIN (
+					SELECT *
+					FROM name
+					LEFT JOIN rating
+						ON name.nid = rating.nid
+						AND rating.username = '${partner}'
+					WHERE creator IN ('<default>', '${partner}')
+				) n2
+					ON n1.name = n2.name
+					AND n1.isMale = n2.isMale
 			`;
 		}
-
-		whereQueries.push(
-			`creator IN (${creators.map((s)=>`'${s}'`).join(', ')})`
-		);
 
 		console.log('queryStr:', createQueryStr(
 			selectQueries,
@@ -804,27 +806,37 @@ app.get('/randomName/:u/password/:p/gender/:g', async (req, res)=>{
 		}
 
 		selectQueries =  [
-			'name', 'isMale', 
-			'pop', 'rank', 
-			'creator', 'name.nid', 
-			'NULL AS myRating'
+			'n1.name AS name', 'n1.isMale AS isMale', 
+			'n1.pop AS pop', 'n1.rank AS rank', 
+			'NULL AS myRating',
+
 		];
 
 		fromQuery = `
-			FROM name
-			LEFT JOIN rating r1
-				ON name.nid = r1.nid
-				AND r1.username = '${username}'
+			FROM (
+				SELECT *
+				FROM name
+				LEFT JOIN rating
+					ON name.nid = rating.nid
+					AND rating.username = '${username}'
+				WHERE creator IN ('<default>', '${username}')
+				AND rating.nid IS NULL
+			) n1 
 		`;
 
 		whereQueries = [];
 
 		if (partner !== undefined){
-			selectQueries.push('r2.rating AS partnerRating');
+			selectQueries.push('n2.rating AS partnerRating');
 			fromQuery += `
-				LEFT JOIN rating r2
-					ON name.nid = r2.nid
-					AND r2.username = '${partner}'
+				 JOIN (
+					SELECT *
+					FROM name
+					LEFT JOIN rating
+						ON name.nid = rating.nid
+						AND rating.username = '${partner}'
+					WHERE creator IN ('<default>', '${partner}')
+				) n2
 			`;
 		} else {
 			selectQueries.push('NULL AS partnerRating');
@@ -832,13 +844,13 @@ app.get('/randomName/:u/password/:p/gender/:g', async (req, res)=>{
 
 		switch (gender){
 			case 'male':
-				whereQueries.push('isMale = 1');
+				whereQueries.push('n1.isMale = 1');
 				break;
 			case 'female':
-				whereQueries.push('isMale = 0');
+				whereQueries.push('n1.isMale = 0');
 				break;
 			case 'unisex':
-				whereQueries.push('isMale = -1');
+				whereQueries.push('n1.isMale = -1');
 				break;
 			case 'any':
 				break;
@@ -848,9 +860,9 @@ app.get('/randomName/:u/password/:p/gender/:g', async (req, res)=>{
 
 		let partnerRatingsExist = await queryExists(createQueryStr(
 			['*'],
-			`FROM name
+			`FROM name n1
 			JOIN rating
-				ON name.nid = rating.nid`,
+				ON n1.nid = rating.nid`,
 			[`username = '${partner}'`, ...whereQueries],
 			'',
 			'LIMIT 1'
@@ -861,15 +873,16 @@ app.get('/randomName/:u/password/:p/gender/:g', async (req, res)=>{
 			res.send({nid: null});
 			return;
 		}
-		console.log('partner', partnerRatingsExist, partner);
+
 		let isCreatedName = (
 			partner !== undefined && 
 			partnerRatingsExist && 
 			(Math.round(Math.random()) || gender == 'unisex')
 		);
 
-		whereQueries.push(`r1.nid IS NULL`);
-		whereQueries.push(`creator = '${isCreatedName ? partner : "<default>"}' `);
+		if (partner !== undefined ) whereQueries.push(
+			`n2.creator = '${isCreatedName ? partner : "<default>"}' `
+		);
 
 		let name; 
 		if (isCreatedName){
@@ -892,7 +905,7 @@ app.get('/randomName/:u/password/:p/gender/:g', async (req, res)=>{
 
 		} else {
 			let { totalSquared } = await queryGet(createQueryStr(
-				['SUM(pop*pop) AS totalSquared'],
+				['SUM(n1.pop*n1.pop) AS totalSquared'],
 				fromQuery,
 				whereQueries,
 				'',
@@ -906,7 +919,7 @@ app.get('/randomName/:u/password/:p/gender/:g', async (req, res)=>{
 				selectQueries,
 				fromQuery,
 				whereQueries,
-				'ORDER BY pop',
+				'ORDER BY n1.pop',
 				''
 			);
 

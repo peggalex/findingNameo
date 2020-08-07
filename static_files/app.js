@@ -360,7 +360,7 @@ function Rating({dispatch, nameObj}){
                     <p className='popLabel'>popularity</p>
                     <p className='pop'>{rank}</p>
                     <p className={popSuffix + ' popSuffix'}></p>
-                </div> : <p>+ new name</p> }
+                </div> : <p className="popLabel">+ new name</p> }
             </div>
             <div className='spacer'></div>
             {StarIcon}
@@ -521,8 +521,6 @@ function RatingsPage({dispatch}){
                     </div> : null
                 }
                 {ratings.map((nameObj)=>{
-                    //nameObj.myRating = (Math.round(Math.random()*20))/2;
-                    //nameObj.partnerRating = (Math.round(Math.random()*20))/2;
                     return <Rating key={JSON.stringify(nameObj)} dispatch={dispatch} nameObj={nameObj}/>
                 })}
                 {isMore ? showMoreButton : ''}
@@ -531,39 +529,94 @@ function RatingsPage({dispatch}){
     )
 }
 
+class RatingError { constructor(msg){ this.message=msg; } }
+
 function RatePage({nameObj}){
 
+    let ratingHasChanged = () => false;
+
+    let [inputMsg, setInputMsg] = React.useState("");
+
     let [rateObj, setRateObj] = React.useState(nameObj);
+    let [myCurrentRating, setMyCurrentRating] = React.useState(null);
+
     let randomGenders = ['any', 'male', 'female', 'unisex'];
     let [randomGenderIndex, setRandomGenderIndex] = React.useState(0);
+
+    let inputRatingRef = React.useRef(null);
+
+    let updateRating = (rating) => {
+        setMyCurrentRating(rating);
+        let inputRating = inputRatingRef.current;
+        if (inputRating != null) inputRating.value = rating == null ? "" : rating.toFixed(1);
+    }
+
     let setRandomRate = () => {
+        if (ratingHasChanged()){
+            if (!confirm("Rating has changed without saving, are you sure you want to leave?")) return;
+        }
         Rate.getRandomRate(randomGenders[randomGenderIndex]).then((rate) => {
-            //rate.myRating = parseInt(Math.random()*20)/2;
-            //rate.partnerRating = parseInt(Math.random()*20)/2;
             if (rate == null) return;
+            updateRating(rate.myRating);
             setRateObj(rate);
         });
     }
-
     React.useEffect(()=>{
-        if (nameObj == null) setRandomRate('any');
+        if (nameObj == null){
+            setRandomRate('any');
+        } else {
+            updateRating(nameObj.myRating);
+        }
     }, []);
 
     if (rateObj == null) return null;
 
     let {name, isMale, rank, myRating, partnerRating} = rateObj;
-    let rating = avg(myRating, partnerRating);
+
     let _genderStr = genderStr(isMale);
+
+    ratingHasChanged = () => myRating != myCurrentRating;
+
+    let validateInput = () => {
+        let inputEl = inputRatingRef.current;
+        if (inputEl == null) return;
+        let ratingStr = inputEl.value;
+
+        try {
+            if (isNaN(ratingStr)) throw new RatingError("Rating must be a number.");
+
+            let rating = parseFloat(ratingStr);
+
+            if (!((0 <= rating) || (rating <= 10))) throw new RatingError("Rating must be between [0, 10].");
+            if (!((rating*2)%1==0)) throw new RatingError("Rating must be a whole or half number.");
+
+            updateRating(rating);
+            console.log('rating set to:', rating);
+            inputEl.setCustomValidity("");
+            return true;
+
+        } catch (e) {
+            if (e instanceof RatingError){
+                inputEl.setCustomValidity(e.message);
+                inputEl.reportValidity();
+                return false;
+            } else {
+                throw e;
+            }
+        }
+    }
 
     return (
         <div id='ratePage' className="col">
             <div id='rateHeader' className={`spacer col ${_genderStr}`}>
-                <p id='rateName' className={(name.length > 7 ? 'long':'')}>{name}</p>
-                <div id='rateGender' className='row centerCross'>
-                    <p>Gender: </p>
-                    <p id='rateGenderActual'>{_genderStr}</p>
-                    {ChevronIcon}
+                <div className="row">
+                    <div className='spacer'></div>
+                    <div id='rateGender' className='row centerCross'>
+                        <p>Gender: </p>
+                        <p id='rateGenderActual'>{_genderStr}</p>
+                    </div>
                 </div>
+                <p id='rateName' className={(name.length > 7 ? 'long':'')}>{name}</p>
                 { (rank) ? <div id='ratePop' className='row centerCross'>
                     {PopIcon}
                     <p id='popLabel'>popularity</p>
@@ -573,7 +626,7 @@ function RatePage({nameObj}){
                 <div className='spacer'></div>
                 <div id='rateRatingContainer' className='row centerCross'>
                     {StarIcon}
-                    <p id='rateRating'>{rating}</p>
+                    <p id='rateRating'>{avg(myCurrentRating, partnerRating)}</p>
                 </div>
             </div>
             <section className={`${isMobile() ? 'col' : 'row'} spacer`}>
@@ -581,14 +634,63 @@ function RatePage({nameObj}){
                     <div className='spacer'></div>
                     <div className='rating col centerCross'>
                         <p>Your Rating</p>
-                        <div className="row centerCross">
-                            {EditIcon}
-                            <input className='ratingNumber' placeholder="?" value={myRating != null ? myRating.toFixed(1) : ''}/>
+                        <div className="col centerCross">
+                            <div className="row centerCross">
+                                <div
+                                    className='clickable'
+                                    onClick={()=>{
+                                        let currentRating = (myCurrentRating == null) ? 5 : myCurrentRating;
+                                        console.log('rating is:', currentRating);
+                                        if ((currentRating+=0.5) > 10) return;
+                                        updateRating(currentRating);
+                                    }}
+                                >
+                                    {ArrowUpIcon}
+                                </div>
+                                <form>
+                                    <input 
+                                        ref = {inputRatingRef}
+                                        onChange={validateInput}
+                                        className='ratingNumber' 
+                                        name='ratingNumber'
+                                        placeholder="?" 
+                                        defaultValue={myCurrentRating != null ? myCurrentRating.toFixed(1) : ''}
+                                    />
+                                </form>
+                                <div
+                                    className='clickable'
+                                    onClick={()=>{
+                                        let currentRating = (myCurrentRating == null) ? 5 : myCurrentRating;
+                                        if ((currentRating-=0.5) < 0) return;
+                                        updateRating(currentRating);
+                                    }}
+                                >
+                                    {ArrowDownIcon}
+                                </div>
+                            </div>
+                            <p 
+                                onClick = {async ()=>{
+                                    console.log(await waitForAjaxCall('put', `
+                                        /rate/${UserObject.getUsername()}
+                                        /password/${UserObject.getPassword()}
+                                        /name/${name}
+                                        /isMale/${isMale}
+                                        /rating/${myCurrentRating}
+                                    `));
+                                    let _rateObj = {...rateObj};
+                                    _rateObj.myRating = myCurrentRating;
+                                    setRateObj(_rateObj);
+                                }}
+                                className={
+                                    'saveSpace saveButton ' + (ratingHasChanged() ? 'canSave clickable' : 'notCanSave disabled')
+                                }
+                            >save</p>
                         </div>
                     </div>
                     <div id='ratingPartner' className='rating col centerCross'>
                         <p>Partner Rating</p>
-                        <p className='ratingNumber'>{partnerRating != null ? partnerRating.toFixed(1) : '?'}</p>
+                        <p className='ratingNumber centerAll'>{partnerRating != null ? partnerRating.toFixed(1) : ClockIcon}</p>
+                        <p className='saveSpace'></p>
                     </div>
                     <div className='spacer'></div>
                 </div>
