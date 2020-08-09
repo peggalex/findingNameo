@@ -264,6 +264,15 @@ function MainPageNav({name, icon, state, dispatch}){
     );
 }
 
+class DynamicRating {
+	constructor(name, isMale, username, rating){
+		this.name = name;
+		this.isMale = isMale;
+		this.username = username;
+		this.rating = rating;
+	}
+}
+
 var pages;
 
 function MainPage({setPage}){
@@ -326,7 +335,7 @@ class Rate {
             /password/${UserObject.getPassword()}
             /gender/${gender}
         `));
-        if (rate.nid == null) {
+        if (rate.name == null) {
             alert(`No ${gender} ratings created (yet).`);
             return null;
         }
@@ -354,7 +363,7 @@ function Rating({dispatch, nameObj}){
             </div>
             <div className='genderPlaceholder'></div>
             <div className='namePop'>
-                <p className={'name '+(name.length > 7 ? 'long':'')}>{name}</p>
+                <p className={'name '+(name.length > 9 ? 'long':'')}>{name}</p>
                 { rank ? 
                 <div className='row'>
                     <p className='popLabel'>popularity</p>
@@ -391,12 +400,10 @@ function RatingsFilterOption({filterName, subFilterElements, filterObj: {filter,
 
     const nextIndex = () => {
         if (isSelected()){
-            console.log('isSelected', 'filter:', filter, 'filterName', filterName);
             let newIndex = (subFilterIndex + 1) % subFilterElements.length;
             setSubFilterIndex(newIndex);
             setSubFilter(subFilterElements[newIndex]);
         } else {
-            console.log('!isSelected', 'filter:', filter, 'filterName', filterName);
             setFilter(filterName);
             setSubFilter(subFilterElements[subFilterIndex]);
         }
@@ -432,17 +439,17 @@ function RatingsFilter({filterObj}){
             />
             <RatingsFilterOption 
                 filterName='avg rating' 
-                subFilterElements={['asc', 'desc']} 
+                subFilterElements={['desc', 'asc']} 
                 filterObj={filterObj}
             />
             <RatingsFilterOption 
                 filterName='my rating' 
-                subFilterElements={['asc', 'desc']} 
+                subFilterElements={['desc', 'asc']} 
                 filterObj={filterObj}
             />
             <RatingsFilterOption 
                 filterName='partner rating' 
-                subFilterElements={['asc', 'desc']} 
+                subFilterElements={['desc', 'asc']} 
                 filterObj={filterObj}
             />
             <RatingsFilterOption 
@@ -468,8 +475,8 @@ function RatingsPage({dispatch}){
         let {ratings, isMore} = await waitForAjaxCall('get', `
             /ratings/${UserObject.getUsername()}
             /password/${UserObject.getPassword()}
-            /filter/${filter}
-            /subFilter/${subFilter}
+            /filter/${filter.replace(/ /g, '')}
+            /subFilter/${subFilter.replace(/ /g, '')}
             /range/${range}
             /rangeStart/${rangeStart}
             /search/${searchRef.current ? searchRef.current.value : ''}
@@ -480,8 +487,8 @@ function RatingsPage({dispatch}){
     }
 
     let [showSettings, setShowSettings] = React.useState(false);
-    let [filter, setFilter] = React.useState('popularity');
-    let [subFilter, setSubFilter] = React.useState('asc');
+    let [filter, setFilter] = React.useState('avg rating');
+    let [subFilter, setSubFilter] = React.useState('desc');
 
     React.useEffect(()=>{
         getRatingsSetIsMore(filter, subFilter, ResultsAtATime, 0).then(setRatings);
@@ -616,7 +623,7 @@ function RatePage({nameObj}){
                         <p id='rateGenderActual'>{_genderStr}</p>
                     </div>
                 </div>
-                <p id='rateName' className={(name.length > 7 ? 'long':'')}>{name}</p>
+                <p id='rateName' className={(name.length > 9 ? 'long':'')}>{name}</p>
                 { (rank) ? <div id='ratePop' className='row centerCross'>
                     {PopIcon}
                     <p id='popLabel'>popularity</p>

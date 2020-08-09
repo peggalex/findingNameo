@@ -87,7 +87,7 @@ async function queryGet(queryString, params = []){
 		(err, row) => {
 			if (err){
 				reject(new DatabaseError(err));
-			} else if (row == null){
+			} else if (row === null || row === undefined){
 				reject(new NotFoundError(`${queryString} < ${params} not found.`));
 				// potential security risk ^, don't let client see schema
 			} else {
@@ -100,8 +100,8 @@ async function queryGet(queryString, params = []){
 async function queryExists(queryString, params = []){
 	return new Promise(async (resolve, reject) => {
 		try {
-			await queryGet(queryString, params);
-			resolve(true);
+			let result = await queryGet(queryString, params);
+			resolve(Boolean(result));
 		} catch (e) {
 			if (e instanceof NotFoundError) {
 				resolve(false);
@@ -285,7 +285,15 @@ class WebSocketConnection{
 			func(webSocket);
 		}
 	}
-	
+}
+
+class DynamicRating {
+	constructor(name, isMale, username, rating){
+		this.name = name;
+		this.isMale = isMale;
+		this.username = username;
+		this.rating = rating;
+	}
 }
 
 app.use('/',express.static('static_files')); // this directory has files to be returned
@@ -293,7 +301,7 @@ var WebSocketServer = require('ws').Server;
 
 // ================================================================================
 
-const ratingConnections = new WebSocketConnections();
+const webSocketConnections = new WebSocketConnections();
 var messagePort = port + 1; 
 const ratingWebSocket = new WebSocketServer({port: messagePort});
 
@@ -312,135 +320,14 @@ ratingWebSocket.on('connection', async function(ws, req) {
 	let {username, password} = WebSocketStuff.getUsernamePassword(req.url);
 
 	ws.username = username;
-	ratingConnections.addConnection(username, ws);
-
+	webSocketConnections.addConnection(username, ws);
 	
-	ws.on('message', async (msgStr) => {
-		let msg = JSON.parse(msgStr); // TODO: catch json parse error
-
-		for (let expectedKey of ['username', 'password', 'name', 'isMale', 'rating', 'creator']){
-			if (msg[expectedKey] == undefined){
-				console.log(`Message: '${msg}' missing parameter '${expectedKey}'`);
-				return;
-			}
-		}
-		try {
-			await authenticate(msg.sender, msg.password);
-
-			console.log('received message:', msg);
-			await receiveMessage(
-				msg.sender, 
-				msg.recipient, 
-				msg.messageEncrypted, 
-				msg.encryption_iv
-			);
-		} catch (e) {
-			ws.send(JSON.stringify({error: e.message}));
-		}
-	});
 	ws.on('close', function(){
 		console.log(`'${ws.username}' messages websocket disconnected.`)
-		ratingConnections.removeConnection(username, ws);
+		webSocketConnections.removeConnection(username, ws);
 	});
 	console.log(`'${username}' message websocket connected.`);
 });
-
-
-var partnerRequestPort = port + 3; 
-const partnerConnections = new WebSocketConnections();
-const partnerWebSocket = new WebSocketServer({port: partnerRequestPort});
-
-partnerWebSocket.on('connection', async function(ws, req) {
-	try {
-		await WebSocketStuff.auth(req.url, ws);
-	} catch (e) {
-		ws.close();
-		if (e instanceof BadWebSocketError) {
-			console.log(e.message);
-			return;
-		}
-		throw e;
-	}
-	let {username, password} = WebSocketStuff.getUsernamePassword(req.url);
-
-	ws.username = username;
-	partnerConnections.addConnection(username, ws);
-
-	ws.on('message', async (msgStr) => {
-		let msg = JSON.parse(msgStr);
-		for (let expectedKey of ['sender', 'password', 'recipient']){
-			if (msg[expectedKey] == undefined){
-				console.log(`Message: '${msg}' missing parameter '${expectedKey}'`);
-				return;
-			}
-		}
-		if (msg.sender != ws.username){
-			console.log(`'${ws.username}' tried to send message with username: '${msg.sender}'.`);
-			return;
-		}
-		try {
-			await authenticate(msg.sender, msg.password);
-
-			await sendPartnerRequest(
-				msg.sender, 
-				msg.recipient
-			);
-		} catch (e) {
-			ws.send(JSON.stringify({error: e.message}));
-			console.log(e.message);
-		}
-	});
-
-	ws.on('close', function(){
-		console.log(`'${ws.username}' friend request websocket disconnected.`)
-		partnerConnections.removeConnection(username, ws);
-	});
-	console.log(`'${username}' friend request websocket connected.`);
-});
-
-
-var friendsOnlinePort = port + 4; 
-const friendsOnlineConnections = new WebSocketConnections();
-const friendsOnlineWebSocket = new WebSocketServer({port: friendsOnlinePort});
-
-friendsOnlineWebSocket.on('connection', async function(ws, req) {
-	try {
-		await WebSocketStuff.auth(req.url, ws);
-	} catch (e) { 
-		ws.close();
-		if (e instanceof BadWebSocketError) {
-			console.log(e.message);
-			return;
-		}
-		throw e;
-	}
-	let {username, passwordHash} = WebSocketStuff.getUsernamePassword(req.url);
-
-	ws.username = username;
-	friendsOnlineConnections.addConnection(username, ws);
-
-	try {
-		let friends = await(getFriends(username));
-		for (let friend of friends){
-			if (messageConnections.isConnected(friend.username)) {
-				let message = JSON.stringify({
-					username: friend.username,
-					connected: true
-				});
-				ws.send(message);
-			}
-		}
-	} catch (e) {
-		console.log(e);
-	}
-
-	ws.on('close', function(){
-		console.log(`'${ws.username}' friends online websocket disconnected.`)
-		friendsOnlineConnections.removeConnection(username, ws);
-	});
-	console.log(`'${username}' friends online websocket connected.`);
-});
-
 
 // ================================================================================
 // ================================================================================
@@ -561,6 +448,22 @@ async function createOrUpdateRating(username, name, isMale, rating){
 			[username, rating, timeStr, nid]
 		);
 	}
+
+	let dynamicRating = new DynamicRating(name, isMale, username, rating);
+
+	webSocketConnections.tryToSend(username, {
+		type: 'rating',
+		dynamicRating: dynamicRating
+	});
+	try {
+		let partner = await getPartner(username);
+		webSocketConnections.tryToSend(partner, {
+			type: 'rating',
+			dynamicRating: dynamicRating
+		});
+	} catch (e) {
+		if (!(e instanceof NotFoundError)) throw e;
+	}
 }
 
 async function rate(username, name, isMale, rating){
@@ -669,7 +572,9 @@ createQueryStr = (selectQueries, fromQuery, whereQueries, orderByQuery, limitQue
 	${whereQueries.length > 0 ? "WHERE " + whereQueries.join(" AND ") : "" }
 	${orderByQuery}
 	${limitQuery}
-`.replace(/\t/g, '').replace(/\n\n/g, '\n');
+`
+//.replace(/\t/g, '')
+.replace(/\n\n/g, '\n');
 
 async function getRating(req,res){
 
@@ -717,33 +622,63 @@ async function getRating(req,res){
 		let orderByQuery = '';
 		let limitQuery = `LIMIT ${parseInt(range)+1} OFFSET ${rangeStart}`;
 
-		switch(`${filter} ${subFilter}`){
-			case ("popularity asc"):
-				orderByQuery = 'ORDER BY n1.rank NULLS LAST';
+		let checkSubFilter = (subFilter, ...args) => {
+			if (!args.some(s => s==subFilter)) throw new Error(
+				`Bad order by filter/subfilter: '${filter}/${subFilter}'.`
+			);
+		}
+
+		switch(filter){
+			case ("popularity"):
+				checkSubFilter(subFilter, "asc", "desc");
+				orderByQuery = `ORDER BY n1.rank ${subFilter.toUpperCase()} NULLS LAST`;
 				break;
-			case ("popularity desc"):
-				orderByQuery = 'ORDER BY n1.rank DESC'; 
+
+			case ("name"):
+				checkSubFilter(subFilter, "asc", "desc");
+				orderByQuery = `ORDER BY n1.name ${subFilter.toUpperCase()}`; 
 				break;
-			case ("name asc"):
-				orderByQuery = 'ORDER BY n1.name'; 
-				break;
-			case ("name desc"):
-				orderByQuery = 'ORDER BY n1.name DESC'; 
-				break;
-			case ("gender male"):
-				whereQueries.push('n1.isMale = 1');
-				orderByQuery = 'ORDER BY .n1rank'; 
-				break;
-			case ("gender female"):
-				whereQueries.push('n1.isMale = 0');
+
+			case ("gender"):
+				let isMaleFlag;
+				switch (subFilter){
+					case 'male':
+						isMaleFlag = 1; break;
+					case 'female':
+						isMaleFlag = 0; break;
+					case 'unisex':
+						isMaleFlag = -1; break;
+					default:
+						throw new Error(`Bad order by filter/subfilter: '${filter}/${subFilter}'.`);
+				}
+				whereQueries.push(`n1.isMale = ${isMaleFlag}`);
 				orderByQuery = 'ORDER BY n1.rank'; 
 				break;
-			case ("gender unisex"):
-				whereQueries.push('n1.isMale = -1');
-				orderByQuery = 'ORDER BY n1.rank'; 
+
+			case ("myrating"):
+				checkSubFilter(subFilter, "asc", "desc");
+				orderByQuery = `ORDER BY n1.rating ${subFilter.toUpperCase()} NULLS LAST`;
 				break;
+
+			case ("partnerrating"):
+				checkSubFilter(subFilter, "asc", "desc");
+				orderByQuery = `ORDER BY n2.rating ${subFilter.toUpperCase()} NULLS LAST`;
+				break;
+
+			case ("avgrating"):
+				checkSubFilter(subFilter, "asc", "desc");
+				orderByQuery = `ORDER BY (CASE
+					WHEN (n1.rating IS NOT NULL AND n2.rating IS NOT NULL) THEN (n1.rating + n2.rating)
+					WHEN n1.rating IS NOT NULL THEN n1.rating
+					WHEN n2.rating IS NOT NULL THEN n2.rating
+					ELSE (0-n1.rank)
+				END) ${subFilter.toUpperCase()} NULLS LAST`; 
+				// don't average the rating so that average comes
+				// before 
+				break;
+
 			default:
-				throw new Error('bad order by.');
+				throw new Error(`Bad order by filter ${filter}.`);
 		}
 
 		if (partner!==undefined){
@@ -805,42 +740,20 @@ app.get('/randomName/:u/password/:p/gender/:g', async (req, res)=>{
 			if (!(e instanceof NotFoundError)) throw e;
 		}
 
-		selectQueries =  [
-			'n1.name AS name', 'n1.isMale AS isMale', 
-			'n1.pop AS pop', 'n1.rank AS rank', 
-			'NULL AS myRating',
+		selectQueries =  ['NULL AS myRating'];
 
-		];
-
-		fromQuery = `
-			FROM (
+		_fromQuery = `
+			(
 				SELECT *
 				FROM name
 				LEFT JOIN rating
 					ON name.nid = rating.nid
 					AND rating.username = '${username}'
 				WHERE creator IN ('<default>', '${username}')
-				AND rating.nid IS NULL
 			) n1 
 		`;
 
-		whereQueries = [];
-
-		if (partner !== undefined){
-			selectQueries.push('n2.rating AS partnerRating');
-			fromQuery += `
-				 JOIN (
-					SELECT *
-					FROM name
-					LEFT JOIN rating
-						ON name.nid = rating.nid
-						AND rating.username = '${partner}'
-					WHERE creator IN ('<default>', '${partner}')
-				) n2
-			`;
-		} else {
-			selectQueries.push('NULL AS partnerRating');
-		}
+		whereQueries = ['n1.rating IS NULL'];
 
 		switch (gender){
 			case 'male':
@@ -858,19 +771,38 @@ app.get('/randomName/:u/password/:p/gender/:g', async (req, res)=>{
 				throw new InputError(`gender "${gender}" not in {male, female, unisex, any}`);
 		}
 
-		let partnerRatingsExist = await queryExists(createQueryStr(
-			['*'],
-			`FROM name n1
-			JOIN rating
-				ON n1.nid = rating.nid`,
-			[`username = '${partner}'`, ...whereQueries],
-			'',
-			'LIMIT 1'
-		));
+		let partnerRatingsExist;
+
+		if (partner !== undefined){
+			selectQueries.push('n2.rating AS partnerRating');
+			_fromQuery = `
+				 (
+					SELECT *
+					FROM name
+					LEFT JOIN rating
+						ON name.nid = rating.nid
+						AND rating.username = '${partner}'
+					WHERE creator IN ('<default>', '${partner}')
+				) n2 LEFT JOIN ${_fromQuery}
+					ON n1.name = n2.name
+					AND n1.isMale = n2.isMale
+			`;
+
+			partnerRatingsExist = await queryExists(createQueryStr(
+				['*'],
+				'FROM ' + _fromQuery,
+				[...whereQueries, `n2.creator = '${partner}'`],
+				'',
+				''
+			));
+		} else {
+			selectQueries.push('NULL AS partnerRating');
+			partnerRatingsExist = false;
+		}
 
 		if (!partnerRatingsExist && gender == 'unisex'){
 			res.status(200);
-			res.send({nid: null});
+			res.send({name: null});
 			return;
 		}
 
@@ -880,15 +812,29 @@ app.get('/randomName/:u/password/:p/gender/:g', async (req, res)=>{
 			(Math.round(Math.random()) || gender == 'unisex')
 		);
 
-		if (partner !== undefined ) whereQueries.push(
-			`n2.creator = '${isCreatedName ? partner : "<default>"}' `
-		);
+		[	
+			'name AS name',
+			'isMale AS isMale', 
+			'pop AS pop', 
+			'rank AS rank'
+		].forEach((s) => {
+			selectQueries.push(`${partner===undefined ? "n1" : "n2"}.${s}`);
+		});
 
+		whereQueries.push(`n2.creator = '${isCreatedName ? partner : "<default>"}'`);
+
+		console.log('query:', createQueryStr(
+			selectQueries,
+			'FROM ' + _fromQuery,
+			whereQueries,
+			'',
+			''
+		));
 		let name; 
 		if (isCreatedName){
 			let { total } = await queryGet(createQueryStr(
 				['COUNT(*) AS total'],
-				fromQuery,
+				'FROM ' + _fromQuery,
 				whereQueries,
 				'',
 				''
@@ -897,16 +843,17 @@ app.get('/randomName/:u/password/:p/gender/:g', async (req, res)=>{
 			let target = Math.floor(Math.random()*total);
 			name = await queryGet(createQueryStr(
 				selectQueries,
-				fromQuery,
+				'FROM ' + _fromQuery,
 				whereQueries,
 				'',
 				'LIMIT 1 OFFSET ' + target
 			), []);
 
 		} else {
+
 			let { totalSquared } = await queryGet(createQueryStr(
 				['SUM(n1.pop*n1.pop) AS totalSquared'],
-				fromQuery,
+				'FROM ' + _fromQuery,
 				whereQueries,
 				'',
 				''
@@ -917,9 +864,9 @@ app.get('/randomName/:u/password/:p/gender/:g', async (req, res)=>{
 
 			let eachStr = createQueryStr(
 				selectQueries,
-				fromQuery,
+				'FROM ' + _fromQuery,
 				whereQueries,
-				'ORDER BY n1.pop',
+				'ORDER BY n1.pop DESC',
 				''
 			);
 
@@ -936,7 +883,7 @@ app.get('/randomName/:u/password/:p/gender/:g', async (req, res)=>{
 					}
 					totalRef.runningTotal += popSquared;
 				},
-				() => resolve()
+				resolve
 			));
 			name = totalRef.row;
 		}

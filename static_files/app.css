@@ -602,9 +602,9 @@ button:hover, input:hover, .clickable:hover {
 }
 
 #ratingsPage .namePop .name {
-    font-size: 2rem;
-    font-weight: 600;
-    color: var(--gray700);
+    font-size: 1.8rem;
+    font-weight: 500;
+    color: var(--gray800);
     text-transform: capitalize;
 }
 
@@ -641,7 +641,7 @@ button:hover, input:hover, .clickable:hover {
 }
 
 #ratingsPage .rating {
-    font-size: 2.75rem;
+    font-size: 2.5rem;
     font-weight: 600;
     color: var(--gray700);
     padding-left: 0.2rem;
