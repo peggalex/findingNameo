@@ -11,7 +11,7 @@ const sqlite3 = require('sqlite3').verbose();
 var bodyParser = require('body-parser');
 app.use(bodyParser.json()); // support json encoded bodies
 app.use(bodyParser.urlencoded({ extended: true })); // support encoded bodies
-app.use(express.static('static_files')); 
+//app.use(express.static('static_files')); 
 
 var db = new sqlite3.Database('db/database.db', (err) => {
 	if (err) {
@@ -255,7 +255,7 @@ class WebSocketConnections extends EventEmitter{
 	do = (key, func) => this.connections[key].do(func);
 
 	tryToDo(key, func){
-		if (isConnected(key)){
+		if (this.isConnected(key)){
 			this.do(key, func);
 		}
 	}
@@ -296,16 +296,21 @@ class DynamicRating {
 	}
 }
 
-app.use('/',express.static('static_files')); // this directory has files to be returned
+app.use('/', express.static('finding_nameo_react_app/build'));
+app.get('/', function(req, res) {
+  res.sendFile(path.join(__dirname, 'build', 'index.html'));
+});
+
+//app.use('/',express.static('static_files')); // this directory has files to be returned
 var WebSocketServer = require('ws').Server;
 
 // ================================================================================
 
 const webSocketConnections = new WebSocketConnections();
-var messagePort = port + 1; 
-const ratingWebSocket = new WebSocketServer({port: messagePort});
+var wsPort = port + 1; 
+const webSocket = new WebSocketServer({port: wsPort});
 
-ratingWebSocket.on('connection', async function(ws, req) {
+webSocket.on('connection', async function(ws, req) {
 	
 	try {
 		await WebSocketStuff.auth(req.url, ws);
@@ -450,17 +455,15 @@ async function createOrUpdateRating(username, name, isMale, rating){
 	}
 
 	let dynamicRating = new DynamicRating(name, isMale, username, rating);
-
-	webSocketConnections.tryToSend(username, {
+	let msg = JSON.stringify({
 		type: 'rating',
 		dynamicRating: dynamicRating
-	});
+	})
+
+	webSocketConnections.tryToSend(username, msg);
 	try {
 		let partner = await getPartner(username);
-		webSocketConnections.tryToSend(partner, {
-			type: 'rating',
-			dynamicRating: dynamicRating
-		});
+		webSocketConnections.tryToSend(partner, msg);
 	} catch (e) {
 		if (!(e instanceof NotFoundError)) throw e;
 	}
@@ -631,7 +634,8 @@ async function getRating(req,res){
 		switch(filter){
 			case ("popularity"):
 				checkSubFilter(subFilter, "asc", "desc");
-				orderByQuery = `ORDER BY n1.rank ${subFilter.toUpperCase()} NULLS LAST`;
+				orderByQuery = `ORDER BY n1.rank ${subFilter.toUpperCase()}`;
+				whereQueries.push("n1.creator = '<default>'");
 				break;
 
 			case ("name"):
@@ -657,12 +661,14 @@ async function getRating(req,res){
 
 			case ("myrating"):
 				checkSubFilter(subFilter, "asc", "desc");
-				orderByQuery = `ORDER BY n1.rating ${subFilter.toUpperCase()} NULLS LAST`;
+				orderByQuery = `ORDER BY n1.rating ${subFilter.toUpperCase()}`;
+				whereQueries.push('n1.rating IS NOT NULL')
 				break;
 
 			case ("partnerrating"):
 				checkSubFilter(subFilter, "asc", "desc");
-				orderByQuery = `ORDER BY n2.rating ${subFilter.toUpperCase()} NULLS LAST`;
+				orderByQuery = `ORDER BY n2.rating ${subFilter.toUpperCase()}`;
+				whereQueries.push('n2.rating IS NOT NULL')
 				break;
 
 			case ("avgrating"):
