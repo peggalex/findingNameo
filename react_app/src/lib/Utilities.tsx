@@ -63,3 +63,6 @@ export interface PageAction{
     element?: JSX.Element
 }
 
+export const hasAttributes = (obj: Object, attrs: string[]): boolean => {
+    return attrs.every((a) => (obj as {[key: string]: any})[a] != undefined);
+}

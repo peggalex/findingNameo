@@ -30,8 +30,7 @@ export class Rate {
     myRating: number|null;
     partnerRating: number|null;
 
-    constructor(
-                {name, isMale, rank, myRating, partnerRating}: {
+    constructor(rateObj: {
                     name: string, 
                     isMale: string, 
                     rank: string|null, 
@@ -39,6 +38,8 @@ export class Rate {
                     partnerRating: string|null
                 }
             ){
+
+        let { name, isMale, rank, myRating, partnerRating } = rateObj;
         this.name = name;
         this.isMale = parseInt(isMale);
         this.rank = rank;

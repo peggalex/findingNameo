@@ -4,7 +4,7 @@ import Icons from '../Icons';
 import UserObject from '../UserObject';
 import { useHistory, Link } from 'react-router-dom';
 
-function LoginPage({setPage}: {setPage: SetState<string>}){
+function LoginPage(){
 
     let history = useHistory();
 

@@ -3,7 +3,7 @@ import {isMobile, SetState} from '../Utilities';
 import Icons from '../Icons';
 import { Link } from 'react-router-dom';
 
-function FrontPage({setPage}: {setPage: SetState<string>}){
+function FrontPage(){
 
     return <div id='frontPage' className='col'>
         <div id='logoContainer' className="row centerAll centerCross">

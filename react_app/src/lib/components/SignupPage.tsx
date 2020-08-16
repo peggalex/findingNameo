@@ -1,9 +1,11 @@
 import React from 'react';
 import {SetState, Ref, hash, waitForAjaxCall} from '../Utilities';
+import { Link, useHistory } from 'react-router-dom';
 
-function SignupPage({setPage}: {setPage: SetState<string>}){
+function SignupPage(){
 
     let formRef: Ref<HTMLFormElement|null> = React.useRef(null);
+    let history = useHistory();
 
     const validate = (): boolean => {
         let form = formRef.current!;
@@ -26,7 +28,7 @@ function SignupPage({setPage}: {setPage: SetState<string>}){
                 /nickname/${form.nickname.value}
                 /password/${passwordHashed}
             `);
-            setPage('loginPage');
+            history.push('/login');
             alert("register successful!");
         } catch {
             alert("register failed.");
@@ -53,7 +55,9 @@ function SignupPage({setPage}: {setPage: SetState<string>}){
         <div className='spacer'></div>
 
         <div id='buttons' className="row center">
-            <button onClick={()=>setPage('frontPage')} id='back' type="button">back</button>
+            <Link to="/front">
+                <button id='back' type="button">back</button>
+            </Link>
             <button onClick={validate} id='signup' type="submit">signup</button>
         </div>
 
