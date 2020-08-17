@@ -259,6 +259,8 @@ const Icons = {
             <path id='guide4' fill="none" d="M1011.771,670.229c0,0-796.222,72.396-779-18c10-52.489,184-34.06,24,58c-60.361,34.729-222-8-245-20" />
         </g>
     </svg>,
+
+    LoadingIcon: <div className="loaderContainer"><div className="loader" /></div>,
     
     StarIcon: <svg xmlns="http://www.w3.org/2000/svg" width={48} height={48} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="starIcon"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>,
 

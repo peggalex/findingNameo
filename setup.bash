@@ -6,6 +6,7 @@ npm init
 npm install --save express
 npm install --save JSON
 npm install --save body-parser
+npm install --save path
 
 npm install --save ws
 

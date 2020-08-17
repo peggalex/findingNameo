@@ -3,6 +3,7 @@ var process = require('process');
 // nodejs ftd.js PORT_NUMBER
 var port = parseInt(process.argv[2]); 
 var express = require('express');
+const path = require('path');
 
 var app = express();
 
@@ -295,12 +296,6 @@ class DynamicRating {
 		this.rating = rating;
 	}
 }
-
-app.use('/', express.static('finding_nameo_react_app/build'));
-app.get('/', function(req, res) {
-  res.sendFile(path.join(__dirname, 'build', 'index.html'));
-});
-
 //app.use('/',express.static('static_files')); // this directory has files to be returned
 var WebSocketServer = require('ws').Server;
 
@@ -576,10 +571,10 @@ createQueryStr = (selectQueries, fromQuery, whereQueries, orderByQuery, limitQue
 	${orderByQuery}
 	${limitQuery}
 `
-//.replace(/\t/g, '')
-.replace(/\n\n/g, '\n');
+.replace(/\t/g, '')
+.replace(/\n/g, '\n');
 
-async function getRating(req,res){
+async function getRatings(req,res){
 
 	let username = req.params.u, 
 		password = req.params.p, filter = req.params.f,
@@ -683,6 +678,16 @@ async function getRating(req,res){
 				// before 
 				break;
 
+			case "recent":
+				checkSubFilter(subFilter, "asc", "desc");
+				orderByQuery = `ORDER BY (CASE
+					WHEN (n1.timestamp IS NOT NULL AND n2.timestamp IS NOT NULL) THEN MAX(n1.timestamp, n2.timestamp)
+					WHEN n1.timestamp IS NOT NULL THEN n1.timestamp
+					WHEN n2.timestamp IS NOT NULL THEN n2.timestamp
+					ELSE (0-n1.rank)
+				END) ${subFilter.toUpperCase()} NULLS LAST`; 
+				break;
+
 			default:
 				throw new Error(`Bad order by filter ${filter}.`);
 		}
@@ -727,8 +732,111 @@ async function getRating(req,res){
 	}
 }
 
-app.get('/ratings/:u/password/:p/filter/:f/subFilter/:sf/range/:r/rangeStart/:rs/search/:s', getRating);
-app.get('/ratings/:u/password/:p/filter/:f/subFilter/:sf/range/:r/rangeStart/:rs/search/', getRating);
+app.get('/ratings/:u/password/:p/filter/:f/subFilter/:sf/range/:r/rangeStart/:rs/search/:s', getRatings);
+app.get('/ratings/:u/password/:p/filter/:f/subFilter/:sf/range/:r/rangeStart/:rs/search/', getRatings);
+
+app.get('/getName/:u/password/:p/name/:n/isMale/:m', async (req, res)=>{
+	let username = req.params.u,
+	password = req.params.p,
+	name = req.params.n,
+	isMale = req.params.m;
+
+	try {
+		await authenticate(username, password);
+
+		for (param of [name, isMale]){
+			if (!isAlphaNumeric(param)){
+				throw new InputError(`${param} should be alpha numeric.`)
+			}
+		}
+
+		let partner;
+		try {
+			partner = await getPartner(username);
+		} catch (e) {
+			if (!(e instanceof NotFoundError)) throw e;
+		}
+		
+		let selectQueries = [];
+
+		[	
+			'name AS name',
+			'isMale AS isMale', 
+			'pop AS pop', 
+			'rank AS rank'
+		].forEach((s) => {
+			//selectQueries.push(`${partner===undefined ? "n1" : "n2"}.${s}`);
+			selectQueries.push(`n1.${s}`);
+		});
+
+		selectQueries.push('n1.rating AS myRating',
+		(partner!==undefined ? 'n2.rating' : 'NULL') + ' AS partnerRating')
+
+		let fromQuery = `
+			FROM (
+				SELECT *
+				FROM name
+					LEFT JOIN rating
+						ON name.nid = rating.nid
+						AND rating.username = '${username}'
+				WHERE creator IN ('<default>', '${username}')
+			) n1 `
+		let whereQueries = [`n2.name = '${name}'`, `n2.isMale = ${isMale}`];
+
+		if (partner!==undefined){
+
+			fromQuery += ` 
+				LEFT JOIN (
+					SELECT *
+					FROM name
+					LEFT JOIN rating
+						ON name.nid = rating.nid
+						AND rating.username = '${partner}'
+					WHERE creator IN ('<default>', '${partner}')
+				) n2
+					ON n1.name = n2.name
+					AND n1.isMale = n2.isMale
+			`;
+		}
+		let queryStr = createQueryStr(
+			selectQueries,
+			fromQuery,
+			whereQueries,
+			'',
+			''
+		);
+
+		console.log('queryStr:', queryStr);
+
+		let rating = await queryGet(queryStr);
+
+		console.log('rating', rating);
+		
+		/*
+		let rating = await queryGet(createQueryStr(
+			[
+				'name', 
+				'isMale', 
+				'pop', 
+				'rank', 
+				'n1.rating as myRating',
+				 `${(partner == undefined) ? 'NULL' : 'n2.rating'} as partnerRating`
+			],
+			`FROM name 
+				INNER JOIN rating r1
+					ON r1.nid = name.nid
+					 
+			`
+		));
+		*/
+
+		res.status(200);
+		res.send({rating: rating});
+
+	} catch (e) {
+		handleResponseErrors(e, res);
+	}
+});
 
 
 app.get('/randomName/:u/password/:p/gender/:g', async (req, res)=>{
@@ -900,4 +1008,10 @@ app.get('/randomName/:u/password/:p/gender/:g', async (req, res)=>{
 	} catch (e) {
 		handleResponseErrors(e, res);
 	}
+});
+
+app.use('/', express.static('react_app/build'));
+
+app.get('*', function(req, res) {
+  res.sendFile(path.join(__dirname, 'react_app/build', 'index.html'));
 });

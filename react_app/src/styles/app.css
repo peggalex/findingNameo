@@ -62,6 +62,33 @@ button:hover, input:hover, .clickable:hover {
     flex-grow: 1;
 }
 /* ============================== */
+/* ===== icons =====*/
+/* ============================== */
+
+
+.loader {
+    border: 5px solid var(--grey200);
+    border-top: 5px solid var(--indigo); 
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+}
+
+.loaderContainer {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    width: 100%;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+/* ============================== */
 /* ===== front page =====*/
 /* ============================== */
 
@@ -400,6 +427,11 @@ button:hover, input:hover, .clickable:hover {
 #mainContent {
     flex-grow: 1;
     overflow: auto;
+    display: flex;
+}
+
+#mainContent > *:first-child {
+    width: 100vw;
 }
 
 #mainPage .mainPageNav > svg {
@@ -431,7 +463,6 @@ button:hover, input:hover, .clickable:hover {
 /* ============================== */
 
 #ratingsPage {
-    background-color: var(--gray100);
 }
 
 #ratingsPage .filterIcon > * {
@@ -563,6 +594,10 @@ button:hover, input:hover, .clickable:hover {
 #ratingsPage #filterButton.selected, #ratingsPage #filterButton:hover {
     background-color: var(--gray500);
     border-radius: 100%;
+}
+
+.itsARate{
+    background-color: var(--grey100);
 }
 
 #ratingsPage .itsARate:hover{

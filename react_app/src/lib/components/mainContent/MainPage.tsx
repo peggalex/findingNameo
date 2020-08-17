@@ -52,7 +52,8 @@ function MainPage({match}: {match: RouterMatch}){
             <section id='mainContent'>
                 <Switch>
                     <Route path="/ratings" exact component={RatingsPage}/>
-                    <Route path="/rate/:name/isMale/:isMale" component={RatePage}/>
+                    <Route path="/rate" exact component={RatePage}/>
+                    <Route path="/rate/:name/isMale/:isMale" exact component={RatePage}/>
                 </Switch>
             </section>
             <footer className='row spaceEvenly centerAll'>

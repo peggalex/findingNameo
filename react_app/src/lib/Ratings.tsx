@@ -49,13 +49,14 @@ export class Rate {
 
     static async getRandomRate(gender: 'any'|'male'|'female'|'unisex'){
         // gender in {any, male, female, unisex}
-
-        let rate = new Rate(await waitForAjaxCall('get', `
-            randomName/${UserObject.getUsername()}
+        let res = await waitForAjaxCall('get', `
+            /randomName/${UserObject.getUsername()}
             /password/${UserObject.getPassword()}
             /gender/${gender}
-        `));
+        `)
+        let rate = new Rate(res);
         if (rate.name == null) {
+            console.log('res', res);
             alert(`No ${gender} ratings created (yet).`);
             return null;
         }

@@ -14,12 +14,14 @@ import { useHistory, match as RouterMatch } from 'react-router-dom';
 
 function RatePage({match}: {match: RouterMatch}){
 
-    let ratingHasChanged = () => false;
-
-    let [inputMsg, setInputMsg]: [string, SetState<string>] = React.useState("");
 
     let [rateObj, setRateObj]: [Rate|null, SetState<Rate|null>] = React.useState(null as Rate|null);
     let [myCurrentRating, setMyCurrentRating]: [number|null, SetState<number|null>] = React.useState<number|null>(null);
+    let [ratingHasChanged, setRatingHasChanged] = React.useState(false);
+
+    React.useEffect(()=>{
+        setRatingHasChanged((rateObj ? rateObj.myRating : null) != myCurrentRating);
+    }, [rateObj, myCurrentRating]);
 
     let randomGenders: string[] = ['any', 'male', 'female', 'unisex'];
     let [randomGenderIndex, setRandomGenderIndex]: [number, SetState<number>] = React.useState(0);
@@ -33,11 +35,12 @@ function RatePage({match}: {match: RouterMatch}){
     }
 
     let setRandomRate = (): void => {
-        if (ratingHasChanged()){
+        if (ratingHasChanged){
             if (!window.confirm(
                 "Rating has changed without saving, are you sure you want to leave?"
             )) return;
         }
+        setRateObj(null);
         Rate.getRandomRate(randomGenders[randomGenderIndex] as ('any'|'male'|'female'|'unisex'))
         .then((rate): void => {
             if (rate == null) return;
@@ -45,18 +48,8 @@ function RatePage({match}: {match: RouterMatch}){
             setRateObj(rate);
         });
     }
-    React.useEffect((): ()=>void =>{
-        if (hasAttributes(match.params, ['name', 'isMale'])){
-            let {name, isMale} = match.params as {name: string, isMale: string};
-            waitForAjaxCall('get', `
-                /getName/${UserObject.getUsername()}
-                /password/${UserObject.getPassword()}
-                /name/${name}
-                /isMale/${isMale}
-            `).then((rawRate) => { console.log('rawRate', rawRate); setRateObj(new Rate(rawRate.rating));});
-        } else {
-            setRandomRate();
-        }
+    React.useEffect((): ()=>void => {
+        UserObject.removeWebSocketCallback();
 
 	    UserObject.addWebSocketCallback(async (event) => {
 
@@ -64,13 +57,16 @@ function RatePage({match}: {match: RouterMatch}){
             dynamicRating = new DynamicRating(dynamicRating);
             switch (type){
                 case "rating":
+                    console.log('x1', 'dynamic', dynamicRating, 'rate', rateObj);
                     if (!(dynamicRating && rateObj)) return;
+                    console.log('x2');
                     if (rateObj.name == dynamicRating.name && 
                             rateObj.isMale == dynamicRating.isMale){   
             
                         let ratingName = dynamicRating.isPartners() ? 'partnerRating' : 'myRating';
                         rateObj[ratingName] = parseFloat(dynamicRating.rating);
                         setRateObj({...rateObj});
+                        console.log('happening');
                     }
                     break;
                 
@@ -80,16 +76,32 @@ function RatePage({match}: {match: RouterMatch}){
         });
 
         return UserObject.removeWebSocketCallback;
+    });
+
+    React.useEffect((): void =>{
+        if (hasAttributes(match.params, ['name', 'isMale'])){
+            let {name, isMale} = match.params as {name: string, isMale: string};
+            waitForAjaxCall('get', `
+                /getName/${UserObject.getUsername()}
+                /password/${UserObject.getPassword()}
+                /name/${name}
+                /isMale/${isMale}
+            `).then((res) => {
+                let rate = new Rate(res.rating);
+                updateRating(rate.myRating);
+                setRateObj(rate);
+            });
+        } else {
+            setRandomRate();
+        }
     }, []);
 
-    if (rateObj == null) return null;
+    if (rateObj == null) return Icons.LoadingIcon;
 
     console.log('rateObj!', rateObj);
     let {name, isMale, rank, myRating, partnerRating} = rateObj;
 
     let _genderStr = genderStr(isMale);
-
-    ratingHasChanged = () => myRating != myCurrentRating;
 
     let validateInput = () => {
         let inputEl = inputRatingRef.current;
@@ -196,7 +208,7 @@ function RatePage({match}: {match: RouterMatch}){
                                     setRateObj(_rateObj);*/
                                 }}
                                 className={
-                                    'saveSpace saveButton ' + (ratingHasChanged() ? 'canSave clickable' : 'notCanSave disabled')
+                                    'saveSpace saveButton ' + (ratingHasChanged ? 'canSave clickable' : 'notCanSave disabled')
                                 }
                             >save</p>
                         </div>

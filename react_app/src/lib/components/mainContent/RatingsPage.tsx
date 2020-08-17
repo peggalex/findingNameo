@@ -105,7 +105,7 @@ function RatingsPage({pageDispatch}: {pageDispatch: Dispatch<PageAction>}){
     let [isMore, setIsMore] = React.useState(false);
 
     let getRatingsSetIsMore = async (filter: string, subFilter: string, range: number, rangeStart: number): Promise<Rate[]> => {
-
+        
         let {ratings, isMore}: {ratings: Rate[], isMore: boolean} = await waitForAjaxCall('get', `
             /ratings/${UserObject.getUsername()}
             /password/${UserObject.getPassword()}
@@ -120,17 +120,23 @@ function RatingsPage({pageDispatch}: {pageDispatch: Dispatch<PageAction>}){
         return ratings;
     }
 
+    let setRatingSetIsMore = (filter: string, subFilter: string, range: number, rangeStart: number): void => {
+        setRatings([]);
+        setIsMore(false);
+        getRatingsSetIsMore(filter, subFilter, range, rangeStart).then(setRatings);
+    }
+
     let [showSettings, setShowSettings]: [boolean, SetState<boolean>] = React.useState(false as boolean);
     let [filter, setFilter]: [string, SetState<string>] = React.useState('avg rating');
     let [subFilter, setSubFilter]: [string, SetState<string>] = React.useState('desc');
 
     React.useEffect(()=>{
-        getRatingsSetIsMore(filter, subFilter, ResultsAtATime, 0).then(setRatings);
+        setRatingSetIsMore(filter, subFilter, ResultsAtATime, 0);
     }, [filter, subFilter]);
 
     React.useEffect(()=>{
 
-        getRatingsSetIsMore(filter, subFilter, ResultsAtATime, 0).then(setRatings);
+        setRatingSetIsMore(filter, subFilter, ResultsAtATime, 0);
         
 	    UserObject.addWebSocketCallback(async (event) => {
 
@@ -143,7 +149,7 @@ function RatingsPage({pageDispatch}: {pageDispatch: Dispatch<PageAction>}){
                         ratingsLength = prevState.length;
                         return prevState;
                     });
-                    getRatingsSetIsMore(filter, subFilter, ratingsLength!, 0).then(setRatings);
+                    setRatingSetIsMore(filter, subFilter, ratingsLength!, 0);
 
                     break;
                 
@@ -167,7 +173,7 @@ function RatingsPage({pageDispatch}: {pageDispatch: Dispatch<PageAction>}){
     }>show more</button>;
 
     return (
-        <div id='ratingsPage'>
+        <div id='ratingsPage' className='col spacer'>
             <div>
                 <div id='filter' className='row centerCross'>
                     <div id='filterButton' className={'clickable' + (showSettings ? 'selected' : '')} onClick={()=>setShowSettings(!showSettings)}>
@@ -182,15 +188,17 @@ function RatingsPage({pageDispatch}: {pageDispatch: Dispatch<PageAction>}){
                     {Icons.SearchIcon}
                 </div>
             </div>
-            <div id='ratingsTableContainer' className='col'>
+            <div id='ratingsTableContainer' className='col spacer'>
                 {showSettings ? 
                     <div>
                         <RatingsFilter filterObj={filterObj}/>
                     </div> : null
                 }
-                {ratings.map((nameObj)=>{
-                    return <Rating key={JSON.stringify(nameObj)} pageDispatch={pageDispatch} nameObj={nameObj}/>
-                })}
+                {(ratings.length == 0) ? Icons.LoadingIcon : 
+                    ratings.map((nameObj)=>{
+                        return <Rating key={JSON.stringify(nameObj)} pageDispatch={pageDispatch} nameObj={nameObj}/>
+                    })
+                }
                 {isMore ? showMoreButton : ''}
             </div>
         </div>
