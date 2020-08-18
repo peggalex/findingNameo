@@ -1,4 +1,6 @@
 import $ from 'jquery';
+import UserObject from './UserObject';
+import {Rate} from './Ratings'
 
 export var isMobile = () => window.matchMedia("(orientation: portrait)").matches;
 
@@ -65,4 +67,20 @@ export interface PageAction{
 
 export const hasAttributes = (obj: Object, attrs: string[]): boolean => {
     return attrs.every((a) => (obj as {[key: string]: any})[a] != undefined);
+}
+
+
+export const getRatingsGetIsMore = async (filter: string, subFilter: string, range: number, rangeStart: number, searchTerm: string): Promise<{ratings: Rate[], isMore: boolean}> => {
+        
+    let {ratings, isMore}: {ratings: Rate[], isMore: boolean} = await waitForAjaxCall('get', `
+        /ratings/${UserObject.getUsername()}
+        /password/${UserObject.getPassword()}
+        /filter/${filter.replace(/ /g, '')}
+        /subFilter/${subFilter.replace(/ /g, '')}
+        /range/${range}
+        /rangeStart/${rangeStart}
+        /search/${searchTerm}
+    `);
+    return {ratings: ratings, isMore: isMore}
+
 }

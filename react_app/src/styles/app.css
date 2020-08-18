@@ -401,7 +401,7 @@ button:hover, input:hover, .clickable:hover {
 }
 
 #mainPage header h1 {
-    margin-left: 1rem;
+    margin: 1rem;
     color: var(--gray700);
     font-size: 2.5rem;
 }
@@ -739,7 +739,12 @@ button:hover, input:hover, .clickable:hover {
 /* ============================== */
 
 #ratePage {
+    position: relative;
     height: 100%;
+}
+
+#ratePage > *{
+    width: 100vw;
 }
 
 #ratePage #rateHeader {
@@ -1010,6 +1015,16 @@ button:hover, input:hover, .clickable:hover {
 
 #ratePage .starIcon {
     height: 2.25rem;
+}
+
+#ratePage #searchContainer {
+    position: absolute;
+    background-color: rgba(255,255,255,0.95);
+    width: 85vw;
+    padding: 1rem;
+    border-radius: 1rem;
+    border: solid var(--indigo700);
+    top: 1rem;
 }
 
 

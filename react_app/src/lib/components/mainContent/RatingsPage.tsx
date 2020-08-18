@@ -1,7 +1,7 @@
 import React from 'react';
 import {
     SetState, Dispatch, 
-    Ref, waitForAjaxCall, 
+    Ref, getRatingsGetIsMore, 
     messageStrToJSON, PageAction
 } from '../../Utilities';
 import { Rating, FilterObj } from './MainPageUtilities';
@@ -103,7 +103,7 @@ function RatingsPage({pageDispatch}: {pageDispatch: Dispatch<PageAction>}){
 
     let [ratings, setRatings]: [Rate[], Dispatch<Rate[]> | any] = React.useState([] as Rate[]);
     let [isMore, setIsMore] = React.useState(false);
-
+/*
     let getRatingsSetIsMore = async (filter: string, subFilter: string, range: number, rangeStart: number): Promise<Rate[]> => {
         
         let {ratings, isMore}: {ratings: Rate[], isMore: boolean} = await waitForAjaxCall('get', `
@@ -115,6 +115,16 @@ function RatingsPage({pageDispatch}: {pageDispatch: Dispatch<PageAction>}){
             /rangeStart/${rangeStart}
             /search/${searchRef.current ? searchRef.current!.value : ''}
         `);
+
+        setIsMore(isMore);
+        return ratings;
+    }*/
+
+    let getRatingsSetIsMore =  async (filter: string, subFilter: string, range: number, rangeStart: number): Promise<Rate[]> => {
+        let searchTerm = searchRef.current ? searchRef.current!.value : '';
+        let {ratings, isMore}: {ratings: Rate[], isMore: boolean} = await getRatingsGetIsMore(
+            filter, subFilter, range, rangeStart, searchTerm
+        );
 
         setIsMore(isMore);
         return ratings;

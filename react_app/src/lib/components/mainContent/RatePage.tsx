@@ -3,7 +3,7 @@ import {
     isMobile, SetState,
     Ref, waitForAjaxCall, 
     messageStrToJSON, avg,
-    hasAttributes
+    hasAttributes, getRatingsGetIsMore
 } from '../../Utilities';
 import { genderStr, getNumberSuffix, RatingError, Rating } from './MainPageUtilities';
 
@@ -12,6 +12,23 @@ import {Rate, DynamicRating} from '../../Ratings';
 import UserObject from '../../UserObject';
 import { useHistory, match as RouterMatch } from 'react-router-dom';
 
+function NewRatings(){
+    let [searchTerm, setSearchTerm]: [string, SetState<string>] = React.useState('');
+    let [ratings, setRatings]: [Rate[], SetState<Rate[]>] = React.useState([] as Rate[]);
+
+    React.useEffect(()=>{
+        getRatingsGetIsMore('popularity', 'asc', 10, 0, searchTerm)
+            .then(({ratings, isMore})=> setRatings(ratings));
+    });
+    return (
+        <div id='searchContainer'>
+            <input onChange={(e) => setSearchTerm(e.target.value)}/>
+            {ratings.map((r)=><p>{r.name}</p>)}
+        </div>
+    );
+}
+
+const randomGenders: string[] = ['any', 'male', 'female', 'unisex'];
 function RatePage({match}: {match: RouterMatch}){
 
 
@@ -23,7 +40,6 @@ function RatePage({match}: {match: RouterMatch}){
         setRatingHasChanged((rateObj ? rateObj.myRating : null) != myCurrentRating);
     }, [rateObj, myCurrentRating]);
 
-    let randomGenders: string[] = ['any', 'male', 'female', 'unisex'];
     let [randomGenderIndex, setRandomGenderIndex]: [number, SetState<number>] = React.useState(0);
 
     let inputRatingRef: Ref<HTMLInputElement|null> = React.useRef(null);
@@ -96,9 +112,10 @@ function RatePage({match}: {match: RouterMatch}){
         }
     }, []);
 
+    let [showRating, setShowRating]: [boolean, SetState<boolean>] = React.useState(false as boolean);
+
     if (rateObj == null) return Icons.LoadingIcon;
 
-    console.log('rateObj!', rateObj);
     let {name, isMale, rank, myRating, partnerRating} = rateObj;
 
     let _genderStr = genderStr(isMale);
@@ -133,7 +150,7 @@ function RatePage({match}: {match: RouterMatch}){
     }
 
     return (
-        <div id='ratePage' className="col">
+        <div id='ratePage' className="col centerAll">
             <div id='rateHeader' className={`spacer col ${_genderStr}`}>
                 <div className="row">
                     <div className='spacer'></div>
@@ -239,10 +256,11 @@ function RatePage({match}: {match: RouterMatch}){
                     </div>
                     <div className='spacer'></div>
                     <p className='newRateDesc'>Search for an existing name, or add a new one</p>
-                    <button id='searchName' className='newRate'>{Icons.SearchIcon}</button>
+                    <button id='searchName' onClick={()=>setShowRating(true)} className='newRate'>{Icons.SearchIcon}</button>
                     <div className='spacer'></div>
                 </div>
             </section>
+            {showRating ? <NewRatings/> : null}
         </div>
     );
 }
