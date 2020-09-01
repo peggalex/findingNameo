@@ -12,7 +12,7 @@ import {Rate, DynamicRating} from '../../Ratings';
 import UserObject from '../../UserObject';
 import { useHistory, match as RouterMatch } from 'react-router-dom';
 
-function NewRatings(){
+/*function NewRatings({close}: {close: ()=>void}){
     let [searchTerm, setSearchTerm]: [string, SetState<string>] = React.useState('');
     let [ratings, setRatings]: [Rate[], SetState<Rate[]>] = React.useState([] as Rate[]);
 
@@ -21,12 +21,18 @@ function NewRatings(){
             .then(({ratings, isMore})=> setRatings(ratings));
     });
     return (
-        <div id='searchContainer'>
-            <input onChange={(e) => setSearchTerm(e.target.value)}/>
-            {ratings.map((r)=><p>{r.name}</p>)}
+        <div id='searchContainerOuter' className='centerAll'>
+            <div id='searchContainer' className='col centerAll'>
+                <div id='closeNewRatingsContainer' className='row'>
+                    <div className='spacer'></div>
+                    <button id='closeNewRatings' onClick={close}>{Icons.CrossIcon}</button>
+                </div>
+                <input id='searchNewRatings' onChange={(e) => setSearchTerm(e.target.value)}/>
+                {ratings.map((r)=><p>{r.name}</p>)}
+            </div>
         </div>
     );
-}
+}*/
 
 const randomGenders: string[] = ['any', 'male', 'female', 'unisex'];
 function RatePage({match}: {match: RouterMatch}){
@@ -73,19 +79,17 @@ function RatePage({match}: {match: RouterMatch}){
             dynamicRating = new DynamicRating(dynamicRating);
             switch (type){
                 case "rating":
-                    console.log('x1', 'dynamic', dynamicRating, 'rate', rateObj);
                     if (!(dynamicRating && rateObj)) return;
-                    console.log('x2');
                     if (rateObj.name == dynamicRating.name && 
                             rateObj.isMale == dynamicRating.isMale){   
             
                         let ratingName = dynamicRating.isPartners() ? 'partnerRating' : 'myRating';
                         rateObj[ratingName] = parseFloat(dynamicRating.rating);
                         setRateObj({...rateObj});
-                        console.log('happening');
                     }
                     break;
-                
+                case "partner":
+                    break;
                 default:
                     throw new Error(`unknown websocket type: "${type}"`);
             }
@@ -112,7 +116,7 @@ function RatePage({match}: {match: RouterMatch}){
         }
     }, []);
 
-    let [showRating, setShowRating]: [boolean, SetState<boolean>] = React.useState(false as boolean);
+    //let [showRating, setShowRating]: [boolean, SetState<boolean>] = React.useState(false as boolean);
 
     if (rateObj == null) return Icons.LoadingIcon;
 
@@ -255,12 +259,12 @@ function RatePage({match}: {match: RouterMatch}){
                         </button>
                     </div>
                     <div className='spacer'></div>
-                    <p className='newRateDesc'>Search for an existing name, or add a new one</p>
-                    <button id='searchName' onClick={()=>setShowRating(true)} className='newRate'>{Icons.SearchIcon}</button>
-                    <div className='spacer'></div>
+                    {/*<p className='newRateDesc'>Search for an existing name, or add a new one</p>
+                    <button id='searchName' onClick={()=>setShowRating(!showRating)} className='newRate'>{Icons.SearchIcon}</button>
+                    <div className='spacer'></div>*/}
                 </div>
             </section>
-            {showRating ? <NewRatings/> : null}
+            {/*showRating ? <NewRatings close={()=>setShowRating(false)}/> : null*/}
         </div>
     );
 }

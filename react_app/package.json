@@ -12,13 +12,15 @@
     "@types/react": "^16.9.46",
     "@types/react-dom": "^16.9.8",
     "@types/react-router-dom": "^5.1.5",
+    "@types/web-push": "^3.3.0",
     "create-react-app": "^3.4.1",
     "jquery": "^3.5.1",
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
     "react-router-dom": "^5.2.0",
     "react-scripts": "3.4.3",
-    "typescript": "^3.9.7"
+    "typescript": "^3.9.7",
+    "web-push": "^3.4.4"
   },
   "scripts": {
     "start": "react-scripts start",

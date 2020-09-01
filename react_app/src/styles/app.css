@@ -1027,6 +1027,30 @@ button:hover, input:hover, .clickable:hover {
     top: 1rem;
 }
 
+#ratePage #closeNewRatingsContainer{
+    width: 100%;
+    margin-bottom: 0.5rem;
+}
+
+#ratePage #closeNewRatings {
+    background-color: transparent;
+    border: none;
+}
+
+#ratePage #closeNewRatings > svg {
+    transform: scale(1.5);
+}
+
+#ratePage #closeNewRatings > svg > * {
+    color: var(--indigo700);
+}
+
+#ratePage #searchNewRatings {
+    border-radius: 2rem;
+    border-color: var(--indigo700);
+    height: 2rem;
+    width: 90%;
+}
 
 @media only screen and (orientation: portrait) {
 
