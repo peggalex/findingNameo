@@ -224,9 +224,9 @@ function RatePage({match}: {match: RouterMatch}){
                                         /isMale/${isMale}
                                         /rating/${myCurrentRating}
                                     `));
-                                    /*let _rateObj = {...rateObj};
+                                    let _rateObj: Rate = {...rateObj!};
                                     _rateObj.myRating = myCurrentRating;
-                                    setRateObj(_rateObj);*/
+                                    setRateObj(_rateObj);
                                 }}
                                 className={
                                     'saveSpace saveButton ' + (ratingHasChanged ? 'canSave clickable' : 'notCanSave disabled')

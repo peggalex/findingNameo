@@ -1,9 +1,9 @@
 CREATE TABLE name (
-	name VARCHAR(60),
-	isMale INTEGER,
+	name VARCHAR(60) NOT NULL,
+	isMale INTEGER NOT NULL,
 	pop INTEGER,
 	rank INTEGER,
-	creator VARCHAR(20),
+	creator VARCHAR(20) NOT NULL,
 	nid INTEGER PRIMARY KEY,
 	FOREIGN KEY (creator) REFERENCES user(username)
 );
@@ -11,13 +11,21 @@ CREATE TABLE name (
 CREATE TABLE user (
 	username VARCHAR(20) PRIMARY KEY,
 	nickname VARCHAR(20),
-	password CHAR(128)
+	password CHAR(128) NOT NULL
+);
+
+CREATE TABLE pushSubscription (
+	username VARCHAR(20) NOT NULL,
+	endpoint VARCHAR(500) PRIMARY KEY,
+	p256dh VARCHAR(100) NOT NULL,
+	auth VARCHAR(50) NOT NULL,
+	FOREIGN KEY (username) REFERENCES user(username)
 );
 
 CREATE TABLE rating (
 	username VARCHAR(20),
-	rating NUMERIC,
-	timestamp CHAR(24),
+	rating NUMERIC NOT NULL,
+	timestamp CHAR(24) NOT NULL,
 	nid INTEGER,
 	PRIMARY KEY (username, nid),	
 	FOREIGN KEY (username) REFERENCES user(username),
@@ -26,7 +34,7 @@ CREATE TABLE rating (
 
 CREATE TABLE partnerRequest(
 	requestor VARCHAR(20) PRIMARY KEY,
-	requestee VARCHAR(20),
+	requestee VARCHAR(20) NOT NULL,
 	FOREIGN KEY (requestor) REFERENCES user(username),
 	FOREIGN KEY (requestee) REFERENCES user(username)
 );

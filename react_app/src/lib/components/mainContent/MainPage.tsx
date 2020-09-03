@@ -2,7 +2,7 @@ import React from 'react';
 import { Dispatch, PageState,PageAction } from '../../Utilities';
 import RatingsPage from './RatingsPage';
 import RatePage from './RatePage';
-
+import PartnerPage from './PartnerPage';
 
 import Icons from '../../Icons';
 import UserObject from '../../UserObject';
@@ -52,6 +52,7 @@ function MainPage({match}: {match: RouterMatch}){
             <section id='mainContent'>
                 <Switch>
                     <Route path="/ratings" exact component={RatingsPage}/>
+                    <Route path="/partner" exact component={PartnerPage}/>
                     <Route path="/rate" exact component={RatePage}/>
                     <Route path="/rate/:name/isMale/:isMale" exact component={RatePage}/>
                 </Switch>

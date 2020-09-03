@@ -1,3 +1,8 @@
+const publicVapidKey = "BJ2XSl6yFWZV9fSzKYGcvUtlEbnYiUo2k0RFtetCpLj3q62YF6YsHwK62G5T7CbQKX4PHPgHgEa3CyPPmnxJWp4";
+const privateVapidKey = "KRkJ7DjHVUUgmw22oSCMkoAUL5Iig4ARPwsbgO_jpQc"; //for push notifications
+const webpush = require('web-push');
+webpush.setVapidDetails('mailto:alexpomelopegg@gmail.com', publicVapidKey, privateVapidKey);
+
 var process = require('process');
 
 // nodejs ftd.js PORT_NUMBER
@@ -180,7 +185,7 @@ const EventEmitter = require('events');
 class WebSocketStuff {
 
 	static getUsernamePassword(url){
-		let usernamePassword = url.match(/\/\?username=(.+)&password=(.+)/i);
+		let usernamePassword = url.match(/\/\?username=(.+)&password=(.+).*/i);
 
 		// check if username is defined
 		if (usernamePassword == null){
@@ -317,9 +322,15 @@ webSocket.on('connection', async function(ws, req) {
 		}
 		throw e;
 	}
-	let {username, password} = WebSocketStuff.getUsernamePassword(req.url);
 
+	let {username, password} = WebSocketStuff.getUsernamePassword(req.url);
 	ws.username = username;
+	ws.pushNotifications = false;
+
+	ws.endpoint = decodeURI(endpoint);
+	ws.p256dh = decodeURI(p256dh);
+	ws.auth = decodeURI(auth);
+
 	webSocketConnections.addConnection(username, ws);
 	
 	ws.on('close', function(){
@@ -327,6 +338,15 @@ webSocket.on('connection', async function(ws, req) {
 		webSocketConnections.removeConnection(username, ws);
 	});
 	console.log(`'${username}' message websocket connected.`);
+
+	let match = url.match(/\/\?username=.+&password=.+&endpointUrlEncoded=(.+)&p256dh=(.+)&auth=(.+)/i);
+	ws.hasPushNotifications = match == null;
+	if (match == null) return;
+	
+	let [_, endpoint, p256dh, auth] = match;
+	ws.endpoint = decodeURI(endpoint);
+	ws.p256dh = decodeURI(p256dh);
+	ws.auth = decodeURI(auth);
 });
 
 // ================================================================================
@@ -348,33 +368,22 @@ getPartner = async (username) => (await queryGet(
 
 async function sendPartnerRequest(requestor, requestee){
 
-	await usernameExists(requestee);
+	let requestorHasPartner = await queryExists(
+		'SELECT * FROM partners WHERE ? IN (partner1, partner2)',
+		[requestor]
+	);
+	if (requestorHasPartner) throw new ForbiddenError('requestor already has partner');
 
-	let isPartnerRequested;
+	let requesteeHasPartner = await queryExists(
+		'SELECT * FROM partners WHERE ? IN (partner1, partner2)',
+		[requestee]
+	);
+	if (requesteeHasPartner) throw new ConflictError('requestee already has partner');
 
-	try {
-		let partner = await getPartner(requestor);
-		if (partner.username == requestee){
-			throw new ConflictError('Tried to send partner request to partners.');
-		}
-	} catch (e){
-		if (!(e instanceof NotFoundError)) throw e;
-	}
-
-	try {
-		let partnerRequests = await queryGet(
-			'SELECT * FROM partnerRequest WHERE requestor=? AND requestee=?',
-			[requestor, requestee]
-		);
-		isPartnerRequested = true;
-
-	} catch (e){
-		if (e instanceof NotFoundError){
-			isPartnerRequested = false;
-		} else {
-			throw e;
-		}
-	}
+	let isPartnerRequested = await queryExists(
+		'SELECT * FROM partnerRequest WHERE requestor=? AND requestee=?',
+		[requestee, requestor]
+	);
 	
 	if (isPartnerRequested){
 		// if the other user requested a friend request,
@@ -406,6 +415,34 @@ async function sendPartnerRequest(requestor, requestee){
 	}
 }
 
+// partnerRequest api
+app.get('/partnerRequest/:u/password/:p/partner/:partner', async function(req, res) {
+	let username = req.params.u,
+		password = req.params.p,
+		partner = req.params.partner;
+
+	try {
+		await authenticate(username, password);
+
+		let hasPartner;
+		try {
+			await sendPartnerRequest(username, partner);
+			hasPartner = false;
+		} catch (e) {
+			if (e instanceof ConflictError){
+				hasPartner = true;
+			} else {
+				throw e;
+			}
+		}
+
+		res.status(200);
+		res.send({hasPartner: hasPartner});
+
+	} catch (e) {
+		handleResponseErrors(e, res);
+	}
+});
 function sendRequest(username, friend, isRequester){
 	let msg = {
 		username: friend, 
@@ -516,8 +553,6 @@ app.listen(port, function () {
   console.log('Example app listening on port '+port);
 });
 
-
-
 app.get('/login/:u/password/:p', async function(req, res) {
 
 	let username = req.params.u,
@@ -525,9 +560,54 @@ app.get('/login/:u/password/:p', async function(req, res) {
 
 	try {
 		await authenticate(username, password);
-
+		
 		res.status(200);
 		res.send({success: 'logged in'});
+	} catch (e) {
+		handleResponseErrors(e, res);
+	}
+});
+
+app.get('/login/:u/password/:p/endpoint/:e/p256dh/:h/auth/:a', async function(req, res) {
+
+	let username = req.params.u,
+		password = req.params.p,
+		endpoint = req.params.e,
+		p256dh = req.params.h,
+		auth = req.params.a;
+
+	try {
+		await authenticate(username, password);
+
+		await queryRun('BEGIN TRANSACTION');
+
+		let exists = await queryExists(`
+			SELECT * FROM pushSubscription 
+			WHERE endpoint = ?
+		`, [endpoint]);
+
+		if (exists){
+			queryRun(`
+				UPDATE * FROM pushSubscription
+				SET username = ?
+				WHERE endpoint = ?
+			`, [username, endpoint])
+		} else {
+			await queryRun(`
+				INSERT INTO pushSubscription(
+					username, 
+					endpoint, 
+					p256dh, 
+					auth) 
+				VALUES(?, ?, ?, ?)
+			`, [username, endpoint, p256dh, auth]);
+		}
+
+		await queryRun('END TRANSACTION');
+
+
+		res.status(200);
+		res.send({success: `logged in, push service ${(exists) ? 'updated' : 'subscribed'}.`});
 	} catch (e) {
 		handleResponseErrors(e, res);
 	}
@@ -662,16 +742,16 @@ async function getRatings(req,res){
 
 			case ("partnerrating"):
 				checkSubFilter(subFilter, "asc", "desc");
-				orderByQuery = `ORDER BY n2.rating ${subFilter.toUpperCase()}`;
+				orderByQuery = (partner===undefined) ? '' : `ORDER BY n2.rating ${subFilter.toUpperCase()}`;
 				whereQueries.push('n2.rating IS NOT NULL')
 				break;
 
 			case ("avgrating"):
 				checkSubFilter(subFilter, "asc", "desc");
 				orderByQuery = `ORDER BY (CASE
-					WHEN (n1.rating IS NOT NULL AND n2.rating IS NOT NULL) THEN (n1.rating + n2.rating)
+					${orderByQuery = (partner===undefined) ? '' : 'WHEN (n1.rating IS NOT NULL AND n2.rating IS NOT NULL) THEN (n1.rating + n2.rating)'}
 					WHEN n1.rating IS NOT NULL THEN n1.rating
-					WHEN n2.rating IS NOT NULL THEN n2.rating
+					${orderByQuery = (partner===undefined) ? '' : 'WHEN n2.rating IS NOT NULL THEN n2.rating'}
 					ELSE (0-n1.rank)
 				END) ${subFilter.toUpperCase()} NULLS LAST`; 
 				// don't average the rating so that average comes
@@ -681,9 +761,9 @@ async function getRatings(req,res){
 			case "recent":
 				checkSubFilter(subFilter, "asc", "desc");
 				orderByQuery = `ORDER BY (CASE
-					WHEN (n1.timestamp IS NOT NULL AND n2.timestamp IS NOT NULL) THEN MAX(n1.timestamp, n2.timestamp)
+					WHEN ${orderByQuery = (partner===undefined) ? '' : '(n1.timestamp IS NOT NULL AND n2.timestamp IS NOT NULL) THEN MAX(n1.timestamp, n2.timestamp)'}
 					WHEN n1.timestamp IS NOT NULL THEN n1.timestamp
-					WHEN n2.timestamp IS NOT NULL THEN n2.timestamp
+					${orderByQuery = (partner===undefined) ? '' : 'WHEN n2.timestamp IS NOT NULL THEN n2.timestamp'}
 					ELSE (0-n1.rank)
 				END) ${subFilter.toUpperCase()} NULLS LAST`; 
 				break;
@@ -770,7 +850,7 @@ app.get('/getName/:u/password/:p/name/:n/isMale/:m', async (req, res)=>{
 		});
 
 		selectQueries.push('n1.rating AS myRating',
-		(partner!==undefined ? 'n2.rating' : 'NULL') + ' AS partnerRating')
+		(partner !== undefined ? 'n2.rating' : 'NULL') + ' AS partnerRating')
 
 		let fromQuery = `
 			FROM (
@@ -781,9 +861,9 @@ app.get('/getName/:u/password/:p/name/:n/isMale/:m', async (req, res)=>{
 						AND rating.username = '${username}'
 				WHERE creator IN ('<default>', '${username}')
 			) n1 `
-		let whereQueries = [`n2.name = '${name}'`, `n2.isMale = ${isMale}`];
+		let whereQueries = [`${(partner !== undefined) ? 'n2' : 'n1'}.name = '${name}'`, `${(partner !== undefined) ? 'n2' : 'n1'}.isMale = ${isMale}`];
 
-		if (partner!==undefined){
+		if (partner !== undefined){
 
 			fromQuery += ` 
 				LEFT JOIN (
@@ -935,7 +1015,7 @@ app.get('/randomName/:u/password/:p/gender/:g', async (req, res)=>{
 			selectQueries.push(`${partner===undefined ? "n1" : "n2"}.${s}`);
 		});
 
-		whereQueries.push(`n2.creator = '${isCreatedName ? partner : "<default>"}'`);
+		whereQueries.push(`${(partner===undefined) ? 'n1' : 'n2'}.creator = '${isCreatedName ? partner : "<default>"}'`);
 
 		console.log('query:', createQueryStr(
 			selectQueries,
@@ -1010,7 +1090,23 @@ app.get('/randomName/:u/password/:p/gender/:g', async (req, res)=>{
 	}
 });
 
+app.post('/subscribe', (req, res) => {
+	const subscription = req.body;
+	res.status(201).json({});
+	const payload = JSON.stringify({ title: 'test' });
+
+	console.log(subscription);
+
+	webpush.sendNotification(subscription, payload).catch(error => {
+		console.error(error.stack);
+	});
+});
+
 app.use('/', express.static('react_app/build'));
+
+app.get('/worker.js', function(req, res) {
+	res.sendFile(path.join(__dirname, 'static_files', 'worker.js'));
+  });
 
 app.get('*', function(req, res) {
   res.sendFile(path.join(__dirname, 'react_app/build', 'index.html'));

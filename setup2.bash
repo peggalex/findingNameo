@@ -1,3 +1,5 @@
+rm db/database.db
+
 sqlite3 db/database.db < db/schema.sql
 sqlite3 <<END_COMMANDS
 .open db/database.db

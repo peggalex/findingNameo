@@ -34,6 +34,14 @@ async function waitForAjaxCall(method, url) {
     }));
 }
 
+function messageStrToJSON(messageStr){
+	let message = JSON.parse(messageStr);
+	if (message.error != null){
+		throw new Error(message.error);
+	}
+	return message;
+}
+
 function isMaleStr(isMale){
     switch (isMale){
         case -1: 
@@ -87,10 +95,36 @@ class UserObject {
     static set(username, password){
         UserObject.instance.username = username;
         UserObject.instance.password = password;
+        UserObject.instance.ws = UserObject.getWebSocket(username, password);
     }
 
     static getUsername = () => UserObject.instance.username;
     static getPassword = () => UserObject.instance.password;
+
+    static addWebSocketCallback = (func) => {
+        UserObject.instance.ws.onmessage = (event) => {
+            console.log('received msg:', event.data);
+            func(event);
+        }
+    }
+
+    static removeWebSocketCallback = () => UserObject.instance.ws.onmessage = () => {};
+
+    static reset = () => {
+        UserObject.instance.ws.close();
+        UserObject.instance = new UserObject();
+    }
+
+    static getWebSocket(username, password){
+
+        let wsPort = parseInt(location.port)+1;
+
+		let ws = new WebSocket(
+			`ws://${location.hostname}:${wsPort}/?username=${username}&password=${password}`
+		);
+        ws.onopen = (event) => console.log("Connected to websocket.");
+        return ws;
+    }
 
 }
 
@@ -106,7 +140,7 @@ function App({}){
         frontPage: <FrontPage setPage={setPage}/>,
         loginPage: <LoginPage setPage={setPage}/>,
         signupPage: <SignupPage setPage={setPage}/>,
-        mainPage: <MainPage setPage={setPage}/>
+        mainPage: <MainPage setPageSuper={setPage}/>
     }
 
     return pages[page];
@@ -248,15 +282,13 @@ function PersonRating({isYou, rating}){
     );
 }
 
-function MainPageNav({name, icon, state, dispatch}){
-    const selected = () => state.pageName==name+'Page';
+
+function MainPageNav({name, icon, page, setPage}){
+    const selected = () => pageState.pageName==name+'Page';
     return (
         <div 
             className={'mainPageNav col centerAll clickable '+(selected() ? 'selected' : '')} 
-            onClick={()=>dispatch({
-                type: 'named',
-                pageName: name+'Page'
-            })}
+            onClick={()=>setPage()}
         >
             {icon}
             <p>{name}</p>
@@ -265,44 +297,24 @@ function MainPageNav({name, icon, state, dispatch}){
 }
 
 class DynamicRating {
-	constructor(name, isMale, username, rating){
-		this.name = name;
-		this.isMale = isMale;
-		this.username = username;
-		this.rating = rating;
-	}
+	constructor(obj){
+        Object.assign(this, obj);
+        if (['name', 'isMale', 'username', 'rating'].some((p) => this[p] === undefined)) throw new Error(
+            `Rate requires name and isMale, got: "${obj}"`
+        );
+    }
+    
+    isPartners = () => this.username != UserObject.getUsername();
 }
 
-var pages;
+function MainPage({setPageSuper}){
 
-function MainPage({setPage}){
+    var pages = {};
 
-    let [state, dispatch] = React.useReducer((state, action)=>{
-        switch (action.type){
-            case 'named':
-                return {
-                    pageName: action.pageName, 
-                    page: pages[action.pageName]
-                }
-
-            case 'element':
-                return {
-                    pageName: action.pageName,
-                    page: action.element
-                }
-
-            default:
-                throw new Error('bad reducer action type.');
-        }
-    }, {pageName: '', page: null});
+    let [pageInner, setPageInner] = React.useState(<RatingsPage pageDispatch={pageDispatch}/>);
 
     React.useEffect(()=>{
         //runs once after first render pass (componentDidMount) iff diff = []
-        pages = {
-            ratingsPage: <RatingsPage dispatch={dispatch}/>,
-            ratePage: <RatePage dispatch={dispatch}/>
-        }
-        dispatch({type: 'named', pageName: 'ratingsPage'});
     }, []);
 
     return (
@@ -312,20 +324,23 @@ function MainPage({setPage}){
                 {CogIcon}
             </header>
             <section id='mainContent'>
-                {state.page}
+                {page}
             </section>
             <footer className='row spaceEvenly centerAll'>
-                <MainPageNav name='ratings' icon={RatingsIcon} state={state} dispatch={dispatch}/>
-                <MainPageNav name='partner' icon={PartnerIcon} state={state} dispatch={dispatch}/>
-                <MainPageNav name='rate' icon={RateIcon} state={state} dispatch={dispatch}/>
+                <MainPageNav name='ratings' icon={RatingsIcon} page={page} setPage={setPage}/>
+                <MainPageNav name='partner' icon={PartnerIcon} page={page} setPage={setPage}/>
+                <MainPageNav name='rate' icon={RateIcon} page={page} setPage={setPage}/>
             </footer>
         </div>
     );
 }
 
 class Rate {
-    constructor(name){
-        Object.assign(this, name);
+    constructor(obj){
+        Object.assign(this, obj);
+        if (['name', 'isMale'].some((p) => this[p] === undefined)) throw new Error(
+            `Rate requires name and isMale, got: "${obj}"`
+        );
     }
 
     static async getRandomRate(gender){
@@ -343,13 +358,13 @@ class Rate {
     }
 }
 
-function Rating({dispatch, nameObj}){
+function Rating({pageDispatch, nameObj}){
 
     let {name, isMale, rank, myRating, partnerRating} = nameObj;
         
     let popSuffix = getNumberSuffix(rank);
     const goToRate = () => {
-        dispatch({
+        pageDispatch({
             type: 'element',
             pageName: 'ratePage',
             element: <RatePage nameObj={nameObj} />
@@ -463,7 +478,7 @@ function RatingsFilter({filterObj}){
 
 const ResultsAtATime = 10;
 
-function RatingsPage({dispatch}){
+function RatingsPage({pageDispatch}){
 
     let searchRef = React.useRef(null);
 
@@ -492,7 +507,35 @@ function RatingsPage({dispatch}){
 
     React.useEffect(()=>{
         getRatingsSetIsMore(filter, subFilter, ResultsAtATime, 0).then(setRatings);
-    }, [filter, subFilter])
+    }, [filter, subFilter]);
+
+    React.useEffect(()=>{
+
+	    UserObject.addWebSocketCallback(async (event) => {
+
+	    	let {type, dynamicRating} = messageStrToJSON(event.data);
+            dynamicRating = new DynamicRating(dynamicRating);
+            console.log('here');
+            switch (type){
+                case "rating":
+                    console.log('here2');
+                    let ratingsLength;
+                    setRatings((prevState) => {
+                        ratingsLength = prevState.length;
+                        return prevState;
+                    });
+                    getRatingsSetIsMore(filter, subFilter, ratingsLength, 0).then(setRatings);
+
+                    console.log('here3');
+                    break;
+                
+                default:
+                    throw new Error(`unknown websocket type: "${type}"`);
+            }
+        });
+
+        return UserObject.removeWebSocketCallback;
+    }, []);
 
     let filterObj = {filter, subFilter, setFilter, setSubFilter}; //todo: turn into useContext
 
@@ -528,7 +571,7 @@ function RatingsPage({dispatch}){
                     </div> : null
                 }
                 {ratings.map((nameObj)=>{
-                    return <Rating key={JSON.stringify(nameObj)} dispatch={dispatch} nameObj={nameObj}/>
+                    return <Rating key={JSON.stringify(nameObj)} pageDispatch={pageDispatch} nameObj={nameObj}/>
                 })}
                 {isMore ? showMoreButton : ''}
             </div>
@@ -574,6 +617,29 @@ function RatePage({nameObj}){
         } else {
             updateRating(nameObj.myRating);
         }
+
+	    UserObject.addWebSocketCallback(async (event) => {
+
+	    	let {type, dynamicRating} = messageStrToJSON(event.data);
+            dynamicRating = new DynamicRating(dynamicRating);
+            switch (type){
+                case "rating":
+                    if (!(dynamicRating && rateObj)) return;
+                    if (rateObj.name == dynamicRating.name && 
+                            rateObj.isMale == dynamicRating.isMale){   
+            
+                        let ratingName = dynamicRating.isPartners() ? 'partnerRating' : 'myRating';
+                        rateObj[ratingName] = parseFloat(dynamicRating.rating);
+                        setRateObj({...rateObj});
+                    }
+                    break;
+                
+                default:
+                    throw new Error(`unknown websocket type: "${type}"`);
+            }
+        });
+
+        return UserObject.removeWebSocketCallback;
     }, []);
 
     if (rateObj == null) return null;
@@ -684,9 +750,9 @@ function RatePage({nameObj}){
                                         /isMale/${isMale}
                                         /rating/${myCurrentRating}
                                     `));
-                                    let _rateObj = {...rateObj};
+                                    /*let _rateObj = {...rateObj};
                                     _rateObj.myRating = myCurrentRating;
-                                    setRateObj(_rateObj);
+                                    setRateObj(_rateObj);*/
                                 }}
                                 className={
                                     'saveSpace saveButton ' + (ratingHasChanged() ? 'canSave clickable' : 'notCanSave disabled')

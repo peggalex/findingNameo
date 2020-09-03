@@ -15,6 +15,8 @@ npm install --save sqlite3
 npm install --save react
 npm install --save react-dom
 
+sudo npm install --save -g web-push
+
 rm db/database.db
 
 sqlite3 db/database.db < db/schema.sql
