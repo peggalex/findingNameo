@@ -15,10 +15,11 @@ CREATE TABLE user (
 );
 
 CREATE TABLE pushSubscription (
-	username VARCHAR(20) NOT NULL,
-	endpoint VARCHAR(500) PRIMARY KEY,
+	username VARCHAR(20),
+	endpoint VARCHAR(500),
 	p256dh VARCHAR(100) NOT NULL,
 	auth VARCHAR(50) NOT NULL,
+	PRIMARY KEY (username, endpoint),	
 	FOREIGN KEY (username) REFERENCES user(username)
 );
 

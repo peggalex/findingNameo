@@ -325,11 +325,6 @@ webSocket.on('connection', async function(ws, req) {
 
 	let {username, password} = WebSocketStuff.getUsernamePassword(req.url);
 	ws.username = username;
-	ws.pushNotifications = false;
-
-	ws.endpoint = decodeURI(endpoint);
-	ws.p256dh = decodeURI(p256dh);
-	ws.auth = decodeURI(auth);
 
 	webSocketConnections.addConnection(username, ws);
 	
@@ -338,15 +333,6 @@ webSocket.on('connection', async function(ws, req) {
 		webSocketConnections.removeConnection(username, ws);
 	});
 	console.log(`'${username}' message websocket connected.`);
-
-	let match = url.match(/\/\?username=.+&password=.+&endpointUrlEncoded=(.+)&p256dh=(.+)&auth=(.+)/i);
-	ws.hasPushNotifications = match == null;
-	if (match == null) return;
-	
-	let [_, endpoint, p256dh, auth] = match;
-	ws.endpoint = decodeURI(endpoint);
-	ws.p256dh = decodeURI(p256dh);
-	ws.auth = decodeURI(auth);
 });
 
 // ================================================================================
@@ -496,6 +482,34 @@ async function createOrUpdateRating(username, name, isMale, rating){
 	try {
 		let partner = await getPartner(username);
 		webSocketConnections.tryToSend(partner, msg);
+
+		let results = await queryAll(`
+			SELECT endpoint, p256dh, auth
+			FROM pushSubscription 
+			WHERE username = ?`,
+			[partner]
+		);
+		let notification = JSON.stringify({
+			title: "Your partner rated", 
+			body: `Your partner ${username} rated ${name} a ${rating}.` 
+		});
+		for (let result of results){
+
+			let { endpoint, p256dh, auth } = result;
+
+			let subscription = { 
+				endpoint: endpoint,
+				expirationTime: null,
+				keys: {
+					p256dh: p256dh,
+					auth: auth
+				}
+			};
+			webpush.sendNotification(subscription, notification).catch(error => {
+				console.error(error.stack);
+			});
+		}
+
 	} catch (e) {
 		if (!(e instanceof NotFoundError)) throw e;
 	}
@@ -650,8 +664,7 @@ createQueryStr = (selectQueries, fromQuery, whereQueries, orderByQuery, limitQue
 	${whereQueries.length > 0 ? "WHERE " + whereQueries.join(" AND ") : "" }
 	${orderByQuery}
 	${limitQuery}
-`
-.replace(/\t/g, '')
+`.replace(/\t/g, '')
 .replace(/\n/g, '\n');
 
 async function getRatings(req,res){

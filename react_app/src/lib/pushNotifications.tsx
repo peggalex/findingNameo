@@ -4,11 +4,11 @@ export var myPushSub: PushSubscription;
 
 // Hard-coded, replace with your public key
 const publicVapidKey = "BJ2XSl6yFWZV9fSzKYGcvUtlEbnYiUo2k0RFtetCpLj3q62YF6YsHwK62G5T7CbQKX4PHPgHgEa3CyPPmnxJWp4";
-export function pokemonGoToThePoles(){
+export function pokemonGoToThePolls(){
     if ('serviceWorker' in navigator) {
         console.log('Registering service worker');
-    
-        run().catch(error => console.error(error));
+        Notification.requestPermission()
+            .then(()=>run().catch(error => console.error(error)));
     }
 }
 
@@ -16,6 +16,7 @@ async function run(){
     console.log('Registering service worker');
     const registration = await navigator.serviceWorker.
         register('/worker.js', {scope: '/'});
+    registration.update();
     console.log('Registered service worker');
 
     console.log('Registering push');
@@ -26,7 +27,7 @@ async function run(){
         });
     console.log('Registered push');
     myPushSub = subscription;
-    
+
     console.log('Sending push');
     await fetch('/subscribe', {
         method: 'POST',

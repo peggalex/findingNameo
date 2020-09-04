@@ -2,11 +2,11 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import './styles/tailwindColours.css';
 import App from './App';
-import { pokemonGoToThePoles } from './lib/pushNotifications';
+import { pokemonGoToThePolls } from './lib/pushNotifications';
 // import * as serviceWorker from './serviceWorker';
 // import { run } from './lib/pushNotifications';
 
-pokemonGoToThePoles();
+pokemonGoToThePolls();
 
 ReactDOM.render(
   <React.StrictMode>

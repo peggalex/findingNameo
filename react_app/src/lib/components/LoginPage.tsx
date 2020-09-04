@@ -3,6 +3,7 @@ import {SetState, hash, waitForAjaxCall} from '../Utilities';
 import Icons from '../Icons';
 import UserObject from '../UserObject';
 import { useHistory, Link } from 'react-router-dom';
+import { myPushSub } from '../pushNotifications';
 
 function LoginPage(){
 
@@ -17,10 +18,27 @@ function LoginPage(){
         let isLoggedIn: boolean = false;
 
         try {
-            await waitForAjaxCall('get', `
+            let loginEndpoint = `
                 /login/${username}
                 /password/${passwordHashed}
-            `);
+            `;
+            console.log('myPushSub', myPushSub); //TODO: remove
+            if (myPushSub !== undefined){
+                let { endpoint, keys: {p256dh, auth } }:{ 
+                    endpoint: string, 
+                    keys: {
+                        p256dh: string, 
+                        auth: string
+                    } 
+                } = JSON.parse(JSON.stringify(myPushSub));
+                loginEndpoint += `
+                    /endpoint/${encodeURIComponent(endpoint)}
+                    /p256dh/${encodeURIComponent(p256dh)}
+                    /auth/${encodeURIComponent(auth)}
+                `;
+                console.log(loginEndpoint);
+            }
+            await waitForAjaxCall('get', loginEndpoint);
             isLoggedIn = true;
         } catch {
             alert("login failed.");
