@@ -102,6 +102,9 @@ button:hover, input:hover, .clickable:hover {
 
 #frontPage #logoContainer {
     flex-grow: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
 }
 
 #frontPage .leaves { 
@@ -112,7 +115,8 @@ button:hover, input:hover, .clickable:hover {
 }
 
 #frontPage #logoContainer > svg{
-    height: 100%;
+    flex-grow: 1;
+    min-height: 0;
 }
 
 #frontPage #logoContainer > svg > *{
@@ -175,12 +179,8 @@ button:hover, input:hover, .clickable:hover {
     border: none;
 }
 
-#frontPage #buttons *{
-    margin-right: 1rem;
-}
-
-#frontPage #buttons *:last-child{
-    margin-right: 0;
+#frontPage #buttons * + *{
+    margin-left: 1rem;
 }
 
 #frontPage #login {
@@ -191,10 +191,6 @@ button:hover, input:hover, .clickable:hover {
 #frontPage #signup {
     background-color: white;
     color: var(--indigo700);
-}
-
-#frontPage #buttons button:last-child {
-    margin-right: 0;
 }
 
 @keyframes shift {
@@ -286,7 +282,6 @@ button:hover, input:hover, .clickable:hover {
 }
 
 #loginPage #buttons button{
-    margin-right: 1rem;
     width: 11rem;
     max-width: 42.5vw;
     height: 3rem;
@@ -296,8 +291,8 @@ button:hover, input:hover, .clickable:hover {
     border: none;
 }
 
-#loginPage #buttons button:last-child{
-    margin-right: 0;
+#loginPage #buttons * + *{
+    margin-left: 1rem;
 }
 
 #loginPage #back {
@@ -368,7 +363,6 @@ button:hover, input:hover, .clickable:hover {
 }
 
 #signupPage #buttons button{
-    margin-right: 1rem;
     width: 11rem;
     max-width: 42.5vw;
     height: 3rem;
@@ -378,8 +372,8 @@ button:hover, input:hover, .clickable:hover {
     border: none;
 }
 
-#signupPage #buttons button:last-child{
-    margin-right: 0;
+#signupPage #buttons * + *{
+    margin-left: 1rem;
 }
 
 #signupPage #back {

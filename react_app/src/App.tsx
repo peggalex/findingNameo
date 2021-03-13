@@ -16,7 +16,7 @@ function App({}): JSX.Element {
     window.addEventListener("resize", () => setRatio(getRatio()));
 
     return (
-        <Router>
+        <Router basename={process.env.PUBLIC_URL}>
             <Switch>
                 <Route path="/login" component={LoginPage}/>
                 <Route path="/signup" component={SignupPage}/>

@@ -41,10 +41,8 @@ class UserObject {
 
     static getWebSocket(username: string, password: string): WebSocket{
 
-      let wsPort = parseInt('1234')+1;
-
       let ws: WebSocket = new WebSocket(
-        `ws://${window.location.hostname}:${wsPort}/?username=${username}&password=${password}`
+        `wss://${window.location.hostname}${process.env.PUBLIC_URL}/webSocket/?username=${username}&password=${password}`
       );
           ws.onopen = (event) => console.log("Connected to websocket.");
           return ws;

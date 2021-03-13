@@ -32,6 +32,9 @@ function arrayRemove(array, element){
 	if(index!=-1) array.splice(index,1);
 }
 
+function capitalize(str){
+	return str[0].toUpperCase() + str.slice(1);
+}
 
 // ================================================================================
 // ================================================================================
@@ -309,12 +312,13 @@ var WebSocketServer = require('ws').Server;
 const webSocketConnections = new WebSocketConnections();
 var wsPort = port + 1; 
 const webSocket = new WebSocketServer({port: wsPort});
-
+console.log('websocket on port', wsPort);
 webSocket.on('connection', async function(ws, req) {
-	
+	console.log('twerking')
 	try {
 		await WebSocketStuff.auth(req.url, ws);
 	} catch (e) {
+		ws.send('hi');
 		ws.close();
 		if (e instanceof BadWebSocketError) {
 			console.log(e.message);
@@ -351,6 +355,12 @@ getPartner = async (username) => (await queryGet(
 	WHERE partner1 =?`,
 	[username, username]
 )).partner;
+
+getNickname = async (username) => (await queryGet(`
+	SELECT nickname
+	FROM user
+	WHERE username = ?
+`, [username])).nickname;
 
 async function sendPartnerRequest(requestor, requestee){
 
@@ -491,7 +501,7 @@ async function createOrUpdateRating(username, name, isMale, rating){
 		);
 		let notification = JSON.stringify({
 			title: "Your partner rated", 
-			body: `Your partner ${username} rated ${name} a ${rating}.` 
+			body: `Your partner rated ${capitalize(name)} a ${rating}/10.` 
 		});
 		for (let result of results){
 

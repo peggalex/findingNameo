@@ -34,7 +34,7 @@ export async function waitForAjaxCall(method: 'post' | 'get' | 'put', url: strin
   
     return new Promise((resolve, reject) => $.ajax({
       method: method,
-      url: url
+      url: `${process.env.PUBLIC_URL}${url}`
     }).done(resolve).fail((data, _, error) => {
       reject(alertError(data, _, error));
     }));
