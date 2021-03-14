@@ -1131,6 +1131,6 @@ app.get('/worker.js', function(req, res) {
 	res.sendFile(path.join(__dirname, 'static_files', 'worker.js'));
   });
 
-app.get('*', function(req, res) {
+/*app.get('*', function(req, res) {
   res.sendFile(path.join(__dirname, 'react_app/build', 'index.html'));
-});
+});*/

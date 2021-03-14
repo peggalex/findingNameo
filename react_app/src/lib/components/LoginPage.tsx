@@ -61,7 +61,7 @@ function LoginPage(){
         <label htmlFor='password'>password</label>
         <input name='password' type='password' required></input>
 
-        <div id='logoContainer' className="row center centerCross">
+        <div id='logoContainer' className="col center centerCross">
             {Icons.Logo}
         </div>
 

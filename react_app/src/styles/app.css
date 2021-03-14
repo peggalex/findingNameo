@@ -265,12 +265,15 @@ button:hover, input:hover, .clickable:hover {
 
 #loginPage #logoContainer {
     flex-grow: 1;
+    min-height: 0;
     width: 100vw;
 }
 
 #loginPage #logoContainer > svg{
     height: 100%;
-    opacity: 75%;
+    opacity: 0.75;
+    flex-grow: 1;
+    min-height: 0;
 }
 
 #loginPage .pram .bubble{
@@ -546,6 +549,8 @@ button:hover, input:hover, .clickable:hover {
 
 #ratingsPage #filterPill svg {
     height: 1rem;
+    width: 1rem;
+    margin: 0 0.25rem;
 }
 
 #ratingsPage #filterPill svg > *{
@@ -592,6 +597,7 @@ button:hover, input:hover, .clickable:hover {
 
 .itsARate{
     background-color: var(--grey100);
+    min-height: 7rem;
 }
 
 #ratingsPage .itsARate:hover{
@@ -720,6 +726,7 @@ button:hover, input:hover, .clickable:hover {
     max-width: 30rem;
     align-self: center;
     height: 3rem;
+    min-height: 3rem;
     border-radius: 1.5rem;
     border: solid 0.1rem var(--indigo700);
     background-color: white;

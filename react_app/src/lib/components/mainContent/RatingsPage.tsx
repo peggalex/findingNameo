@@ -103,22 +103,6 @@ function RatingsPage({pageDispatch}: {pageDispatch: Dispatch<PageAction>}){
 
     let [ratings, setRatings]: [Rate[], Dispatch<Rate[]> | any] = React.useState([] as Rate[]);
     let [isMore, setIsMore] = React.useState(false);
-/*
-    let getRatingsSetIsMore = async (filter: string, subFilter: string, range: number, rangeStart: number): Promise<Rate[]> => {
-        
-        let {ratings, isMore}: {ratings: Rate[], isMore: boolean} = await waitForAjaxCall('get', `
-            /ratings/${UserObject.getUsername()}
-            /password/${UserObject.getPassword()}
-            /filter/${filter.replace(/ /g, '')}
-            /subFilter/${subFilter.replace(/ /g, '')}
-            /range/${range}
-            /rangeStart/${rangeStart}
-            /search/${searchRef.current ? searchRef.current!.value : ''}
-        `);
-
-        setIsMore(isMore);
-        return ratings;
-    }*/
 
     let getRatingsSetIsMore =  async (filter: string, subFilter: string, range: number, rangeStart: number): Promise<Rate[]> => {
         let searchTerm = searchRef.current ? searchRef.current!.value : '';
